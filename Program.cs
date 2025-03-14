@@ -163,8 +163,8 @@ namespace Voronoi
             Raylib.InitWindow(800, 600, "Voronoi");
 
             settings = new();
-            
             ResetSeeds();
+            
             while(!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();

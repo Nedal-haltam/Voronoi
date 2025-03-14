@@ -14,4 +14,13 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="raylib\lib\Raylib-cs.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="raylib\lib\raylib.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
