@@ -134,6 +134,28 @@ namespace Voronoi
             }
             settings.Changed = false;
         }
+        public static void UpdateSettings()
+        {
+            if (Raylib.IsWindowResized())
+            {
+                settings.Changed = true;
+            }
+            if (Raylib.IsKeyPressed(KeyboardKey.R))
+            {
+                ResetSeeds();
+            }
+            if (Raylib.IsKeyDown(KeyboardKey.D))
+            {
+                if (Raylib.IsKeyPressed(KeyboardKey.U))
+                    settings.DistanceType = DistanceType.Euclidean;
+                if (Raylib.IsKeyPressed(KeyboardKey.M))
+                    settings.DistanceType = DistanceType.Manhattan;
+            }
+            if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+            {
+                settings.AddSeed(Raylib.GetMousePosition());
+            }
+        }
         static void Main()
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
@@ -150,31 +172,13 @@ namespace Voronoi
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
 
-                if (Raylib.IsWindowResized())
-                {
-                    settings.Changed = true;
-                }
-                if (Raylib.IsKeyPressed(KeyboardKey.R))
-                {
-                    ResetSeeds();
-                }
-                if (Raylib.IsKeyDown(KeyboardKey.D))
-                {
-                    if (Raylib.IsKeyPressed(KeyboardKey.U))
-                        settings.DistanceType = DistanceType.Euclidean;
-                    if (Raylib.IsKeyPressed(KeyboardKey.M))
-                        settings.DistanceType = DistanceType.Manhattan;
-                }
-                if (Raylib.IsMouseButtonPressed(MouseButton.Left))
-                {
-                    settings.AddSeed(Raylib.GetMousePosition());
-                }
+                UpdateSettings();
                 if (settings.Changed)
                 {
                     UpdateGrid();
                 }
-
                 RenderVoronoi();
+
                 Raylib.DrawFPS(0, 0);
                 Raylib.EndDrawing();
             }
