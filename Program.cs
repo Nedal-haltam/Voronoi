@@ -47,7 +47,8 @@ namespace Voronoi
                         {
                             Vector2 smaller = pixel - pts[index];
                             Vector2 dist = pixel - pts[k];
-                            if ((dist.X * dist.X + dist.Y * dist.Y) < (smaller.X * smaller.X + smaller.Y * smaller.Y))
+                            if ((MathF.Abs(dist.X) + MathF.Abs(dist.Y) ) < (MathF.Abs(smaller.X) + MathF.Abs(smaller.Y) ))
+                            //if ((dist.X * dist.X + dist.Y * dist.Y) < (smaller.X * smaller.X + smaller.Y * smaller.Y))
                             {
                                 index = k;
                             }
