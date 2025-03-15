@@ -65,7 +65,7 @@ namespace Voronoi
         public static int CurrentHeight;
         public enum DistanceType
         {
-            Euclidean, Manhattan, Mix
+            Euclidean, Manhattan, Mix, Minkowski
         }
         public enum RenderType
         {
@@ -177,7 +177,13 @@ namespace Voronoi
         }
         public static bool IsSmallerEuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
-            return (Vec1.X * Vec1.X + Vec1.Y * Vec1.Y) < (Vec2.X * Vec2.X + Vec2.Y * Vec2.Y);
+            float p = 2.0f;
+            return MathF.Pow((MathF.Pow(MathF.Abs(Vec1.X), p) + MathF.Pow(MathF.Abs(Vec1.Y), p)), 1.0f / p) < MathF.Pow((MathF.Pow(MathF.Abs(Vec2.X), p) + MathF.Pow(MathF.Abs(Vec2.Y), p)), 1.0f / p);
+        }
+        public static bool IsSmallerMinkowskiDistance(Vector2 Vec1, Vector2 Vec2)
+        {
+            float p = 3.0f;
+            return MathF.Pow((MathF.Pow(MathF.Abs(Vec1.X), p) + MathF.Pow(MathF.Abs(Vec1.Y), p)), 1.0f / p) < MathF.Pow((MathF.Pow(MathF.Abs(Vec2.X), p) + MathF.Pow(MathF.Abs(Vec2.Y), p)), 1.0f / p);
         }
         public static bool IsSmallerManhattanDistance(Vector2 Vec1, Vector2 Vec2)
         {
@@ -199,18 +205,32 @@ namespace Voronoi
                 return IsSmallerManhattanDistance(Vec1, Vec2);
             if (type == DistanceType.Mix)
                 return IsSmallerMixDistance(Vec1, Vec2);
+            if (type == DistanceType.Minkowski)
+                return IsSmallerMinkowskiDistance(Vec1, Vec2);
 
             throw new Exception("UNREACHABLE");
         }
         public static float EuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
+            float p = 2.0f;
             Vector2 diff = Vec1 - Vec2;
-            return MathF.Sqrt(diff.X * diff.X + diff.Y * diff.Y);
+            return MathF.Pow((MathF.Pow(MathF.Abs(diff.X), p) + MathF.Pow(MathF.Abs(diff.Y), p)), 1.0f / p);
+        }
+        public static float MinkowskiDistance(Vector2 Vec1, Vector2 Vec2)
+        {
+            float p = 2.0f;
+            Vector2 diff = Vec1 - Vec2;
+            return MathF.Pow(MathF.Pow(MathF.Abs(diff.X), p) + MathF.Pow(MathF.Abs(diff.Y), p), 1.0f / p);
         }
         public static float ManhattanDistance(Vector2 Vec1, Vector2 Vec2)
         {
             Vector2 diff = Vec1 - Vec2;
             return MathF.Abs(diff.X) + MathF.Abs(diff.Y);
+        }
+        public static float MixDistance(Vector2 Vec1, Vector2 Vec2)
+        {
+            Vector2 diff = Vec1 - Vec2;
+            return ((1 - settings.MixFactor) * MathF.Sqrt(Vec1.X * Vec1.X + Vec1.Y * Vec1.Y)) + (settings.MixFactor * (MathF.Abs(Vec1.X) + MathF.Abs(Vec1.Y)));
         }
         public static float Distance(Vector2 Vec1, Vector2 Vec2, DistanceType type)
         {
@@ -218,6 +238,10 @@ namespace Voronoi
                 return EuclideanDistance(Vec1, Vec2);
             if (type == DistanceType.Manhattan)
                 return ManhattanDistance(Vec1, Vec2);
+            if (type == DistanceType.Mix)
+                return MixDistance(Vec1, Vec2);
+            if (type == DistanceType.Minkowski)
+                return MinkowskiDistance(Vec1, Vec2);
 
             throw new Exception("UNREACHABLE");
         }
@@ -279,6 +303,8 @@ namespace Voronoi
                         settings.DistanceType = DistanceType.Manhattan;
                     if (Raylib.IsKeyPressed(KeyboardKey.I))
                         settings.DistanceType = DistanceType.Mix;
+                    if (Raylib.IsKeyPressed(KeyboardKey.K))
+                        settings.DistanceType = DistanceType.Minkowski;
                 }
                 if (Raylib.IsKeyDown(KeyboardKey.F))
                 {
@@ -310,6 +336,10 @@ namespace Voronoi
                 }
             }
             Raylib.EndTextureMode();
+        }
+        public static void UpdateGridBetterAlgorithim()
+        {
+            throw new NotImplementedException();
         }
         public static void UpdateGridPrallelApproach()
         {
@@ -380,7 +410,7 @@ namespace Voronoi
             {
                 Seed CurrentSeed = settings.GetSeed(i);
                 Raylib.DrawCircleV(CurrentSeed.Position, 2.5f, Color.Black);
-
+                continue;
                 Vector2 newpos = CurrentSeed.Position + (Raylib.GetFrameTime() * CurrentSeed.Velocity);
                 if (0 <= newpos.X && newpos.X <= CurrentWidth)
                 {
@@ -490,7 +520,7 @@ namespace Voronoi
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
             //Raylib.InitWindow(1600, 900, "Voronoi");
-            Raylib.InitWindow(800, 600, "Voronoi");
+            Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
 
             settings = new();
             State state = State.WelcomeScreen;
