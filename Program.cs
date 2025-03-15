@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using static Voronoi.Program;
 using Color = Raylib_cs.Color;
 
@@ -57,6 +58,10 @@ namespace Voronoi
         public enum DistanceType
         {
             Euclidean, Manhattan, Mix
+        }
+        public enum RenderType
+        {
+            Normal = 1, BlackWHite,
         }
         public struct Seed
         {
@@ -129,10 +134,10 @@ namespace Voronoi
         }
         public static bool IsSmallerMixDistance(Vector2 Vec1, Vector2 Vec2)
         {
-            
-            return 
-                (((1 - settings.MixFactor) * MathF.Sqrt(Vec1.X * Vec1.X + Vec1.Y * Vec1.Y)) + (settings.MixFactor * (MathF.Abs(Vec1.X) + MathF.Abs(Vec1.Y)))) 
-                < 
+
+            return
+                (((1 - settings.MixFactor) * MathF.Sqrt(Vec1.X * Vec1.X + Vec1.Y * Vec1.Y)) + (settings.MixFactor * (MathF.Abs(Vec1.X) + MathF.Abs(Vec1.Y))))
+                <
                 (((1 - settings.MixFactor) * MathF.Sqrt(Vec2.X * Vec2.X + Vec2.Y * Vec2.Y)) + (settings.MixFactor * (MathF.Abs(Vec2.X) + MathF.Abs(Vec2.Y))));
         }
         public static bool IsSmallerDistance(Vector2 Vec1, Vector2 Vec2, DistanceType type)
@@ -169,6 +174,10 @@ namespace Voronoi
         {
             return new() { A = 0xFF, R = (byte)random.Next(255), G = (byte)random.Next(255), B = (byte)random.Next(255) };
         }
+        public static float[] GetRandomColorNormalized()
+        {
+            return [random.NextSingle(), random.NextSingle(), random.NextSingle(), 1.0f];
+        }
         public static void ResetSeeds()
         {
             settings.ClearSeeds();
@@ -188,7 +197,7 @@ namespace Voronoi
             byte r = (byte)((c >>> 0 * 8) & 0xFF);
             byte g = (byte)((c >>> 1 * 8) & 0xFF);
             byte b = (byte)((c >>> 2 * 8) & 0xFF);
-            return new() { A = 0xFF, R = (byte)(r + 150), G = (byte)(g + 150), B = (byte)(b + 150)};
+            return new() { A = 0xFF, R = (byte)(r + 150), G = (byte)(g + 150), B = (byte)(b + 150) };
         }
         public static void UpdateSettings()
         {
@@ -215,7 +224,7 @@ namespace Voronoi
                     settings.MixFactor -= 0.1f;
                 if (Raylib.IsKeyPressed(KeyboardKey.Right))
                     settings.MixFactor += 0.1f;
-                    
+
             }
             if (Raylib.IsMouseButtonPressed(MouseButton.Left))
             {
@@ -252,7 +261,6 @@ namespace Voronoi
             {
                 for (int j = 0; j < CurrentHeight; j++)
                 {
-                    //Color c = COLOR_PALETTE[Grid[i][j] % COLOR_PALETTE.Count];
                     Color c = settings.GetSeed(Grid[i][j]).Color;
                     Raylib.DrawPixel(i, j, c);
                 }
@@ -268,26 +276,49 @@ namespace Voronoi
             Raylib.SetTargetFPS(0);
             Raylib.InitWindow(800, 600, "Voronoi");
 
+            Shader shader = Raylib.LoadShader(null, "Fshader.fs");
             settings = new();
             ResetSeeds();
-            
-            while(!Raylib.WindowShouldClose())
+            float urandom = random.NextSingle();
+            RenderType uID = RenderType.Normal;
+            while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
-                Raylib.ClearBackground(Color.Black);
+                Raylib.ClearBackground(Color.Gray);
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
+                float[] ures = [CurrentWidth, CurrentHeight];
+                if (Raylib.IsKeyPressed(KeyboardKey.R))
+                    urandom = random.NextSingle();
+                if (Raylib.IsKeyPressed(KeyboardKey.One))
+                    uID = RenderType.Normal;
+                if (Raylib.IsKeyPressed(KeyboardKey.Two))
+                    uID = RenderType.BlackWHite;
 
-                UpdateSettings();
-                if (settings.Changed)
-                {
-                    UpdateGrid();
-                }
-                RenderVoronoi_Naive();
+                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "ures"), ures, ShaderUniformDataType.Vec2);
+                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "urandom"), urandom, ShaderUniformDataType.Float);
+                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "uID"), (int)uID, ShaderUniformDataType.Int);
+
+                Raylib.BeginShaderMode(shader);
+                Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
+                Raylib.EndShaderMode();
+
+
+
+
+
+                //UpdateSettings();
+                //if (settings.Changed)
+                //{
+                //    UpdateGrid();
+                //}
+                //RenderVoronoi_Naive();
 
                 Raylib.DrawFPS(0, 0);
                 Raylib.EndDrawing();
             }
+
+            Raylib.UnloadShader(shader);
             Raylib.CloseWindow();
         }
     }
