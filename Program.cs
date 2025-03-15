@@ -365,19 +365,20 @@ namespace Voronoi
         {
             int FontSize = 30;
             int x = CurrentWidth / 3;
-            string TextWelcomeMessage = "Welcom to Boids Simulation";
+            string TextWelcomeMessage = "Welcom to Voronoi Diagram Rendering";
             int TextWelcomeMessageWidth = Raylib.MeasureText(TextWelcomeMessage, FontSize);
-            Raylib.DrawText(TextWelcomeMessage, CurrentWidth / 2 - TextWelcomeMessageWidth / 2, CurrentHeight / 8, FontSize, Color.White);
+            Raylib.DrawText(TextWelcomeMessage, CurrentWidth / 2 - TextWelcomeMessageWidth / 2, CurrentHeight / 13, FontSize, Color.White);
 
             string Textmsg1 = "You can switch between modes of operation:";
             int Textmsg1Width = Raylib.MeasureText(Textmsg1, FontSize);
-            Raylib.DrawText(Textmsg1, CurrentWidth / 2 - Textmsg1Width / 2, CurrentHeight / 5, FontSize, Color.White);
+            Raylib.DrawText(Textmsg1, CurrentWidth / 2 - Textmsg1Width / 2, CurrentHeight / 7, FontSize, Color.White);
             string[] TextParameters =
             [
+                "R: Reset, D: Distance Mode, F: Factor, C: CPU, G: GPU",
                 "C: To switch to CPU mode",
                 "\tR: To get another set of random seeds",
                 "\tD: Press and Hold and then",
-                "\t\tswitch to different distance modes (Euclidean(U), Manhattan(E), Mix(I))",
+                "\t\tswitch to different distance modes by pressing (Euclidean(U), Manhattan(M), Mix(I))",
                 "\tF: Press and Hold and then",
                 "\t\tincrease or decrease the value using",
                 "\t\tthe right and left arrows respectively for the Mix distance mode",
@@ -386,15 +387,13 @@ namespace Voronoi
                 "\tR: To get another set of random seeds",
                 "\t1: To switch to color view",
                 "\t2: To switch to Black/White view",
+                "H: return to Welcome Screen",
             ];
             for (int i = 0; i < TextParameters.Length; i++)
             {
                 string TempText = TextParameters[i];
-                Raylib.DrawText(TempText, x - Textmsg1Width / 2, CurrentHeight / 5 + 100 + i * (int)(1.5f * FontSize), FontSize, Color.White);
+                Raylib.DrawText(TempText, x - Textmsg1Width / 2, CurrentHeight / 7 + 75 + i * (int)(1.5f * FontSize), FontSize, Color.White);
             }
-
-
-
             string TextContinue = "Press Enter to continue.";
             int TextContinueWidth = Raylib.MeasureText(TextContinue, FontSize / 2);
             Raylib.DrawText(TextContinue, CurrentWidth / 2 - TextContinueWidth / 2, CurrentHeight - 20, FontSize / 2, Color.White);
@@ -414,10 +413,15 @@ namespace Voronoi
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
 
-                if (Raylib.IsKeyPressed(KeyboardKey.Enter) && state == State.WelcomeScreen)
+                if (state == State.WelcomeScreen && Raylib.IsKeyPressed(KeyboardKey.Enter))
                 {
                     state = State.Rendering;
                     SwitchRenderTypeToGPU();
+                }
+                if (state == State.Rendering && Raylib.IsKeyPressed(KeyboardKey.H))
+                {
+                    state = State.WelcomeScreen;
+                    Raylib.SetWindowSize(1600, 900);
                 }
 
                 if (state == State.WelcomeScreen)
