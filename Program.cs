@@ -5,7 +5,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Xml;
 using static Voronoi.Program;
 using Color = Raylib_cs.Color;
 
@@ -61,7 +64,15 @@ namespace Voronoi
         }
         public enum RenderType
         {
-            Normal = 1, BlackWHite,
+            CPU, GPU,
+        }
+        public enum RenderView
+        {
+            Color = 1, BlackWhite
+        }
+        public enum State
+        {
+            Rendering, WelcomeScreen
         }
         public struct Seed
         {
@@ -79,11 +90,18 @@ namespace Voronoi
             private DistanceType m_DistanceType;
             public bool Changed;
             private float m_MixFactor = 0.5f;
+            public float urandom;
+            public Shader shader;
+            public RenderView uID;
             public Settings()
             {
                 seeds = [];
                 DistanceType = DistanceType.Euclidean;
                 Changed = true;
+                urandom = random.NextSingle();
+                m_renderType = RenderType.CPU;
+                shader = Raylib.LoadShader(null, "Fshader.fs");
+                uID = RenderView.Color;
             }
             public readonly void AddSeed(Seed seed)
             {
@@ -121,6 +139,16 @@ namespace Voronoi
             public readonly int NumberOfSeeds
             {
                 get => seeds.Count;
+            }
+            private RenderType m_renderType;
+            public RenderType RenderType
+            {
+                get => m_renderType;
+                set
+                {
+                    m_renderType = value;
+                    Changed = true;
+                }
             }
             public readonly int DefaultNumberOfSeeds => 20;
         }
@@ -201,35 +229,46 @@ namespace Voronoi
         }
         public static void UpdateSettings()
         {
-            if (Raylib.IsWindowResized())
+            if (settings.RenderType == RenderType.GPU)
             {
-                settings.Changed = true;
+                if (Raylib.IsKeyPressed(KeyboardKey.R))
+                {
+                    settings.urandom = random.NextSingle();
+                }
             }
-            if (Raylib.IsKeyPressed(KeyboardKey.R))
+            if (settings.RenderType == RenderType.CPU)
             {
-                ResetSeeds();
-            }
-            if (Raylib.IsKeyDown(KeyboardKey.D))
-            {
-                if (Raylib.IsKeyPressed(KeyboardKey.U))
-                    settings.DistanceType = DistanceType.Euclidean;
-                if (Raylib.IsKeyPressed(KeyboardKey.M))
-                    settings.DistanceType = DistanceType.Manhattan;
-                if (Raylib.IsKeyPressed(KeyboardKey.I))
-                    settings.DistanceType = DistanceType.Mix;
-            }
-            if (Raylib.IsKeyDown(KeyboardKey.F))
-            {
-                if (Raylib.IsKeyPressed(KeyboardKey.Left))
-                    settings.MixFactor -= 0.1f;
-                if (Raylib.IsKeyPressed(KeyboardKey.Right))
-                    settings.MixFactor += 0.1f;
+                if (Raylib.IsKeyPressed(KeyboardKey.R))
+                {
+                    ResetSeeds();
+                }
+                if (Raylib.IsWindowResized())
+                {
+                    settings.Changed = true;
+                }
+                if (Raylib.IsKeyDown(KeyboardKey.D))
+                {
+                    if (Raylib.IsKeyPressed(KeyboardKey.U))
+                        settings.DistanceType = DistanceType.Euclidean;
+                    if (Raylib.IsKeyPressed(KeyboardKey.M))
+                        settings.DistanceType = DistanceType.Manhattan;
+                    if (Raylib.IsKeyPressed(KeyboardKey.I))
+                        settings.DistanceType = DistanceType.Mix;
+                }
+                if (Raylib.IsKeyDown(KeyboardKey.F))
+                {
+                    if (Raylib.IsKeyPressed(KeyboardKey.Left))
+                        settings.MixFactor -= 0.1f;
+                    if (Raylib.IsKeyPressed(KeyboardKey.Right))
+                        settings.MixFactor += 0.1f;
 
+                }
+                if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+                {
+                    settings.AddSeed(new(Raylib.GetMousePosition(), GetRandomColor()));
+                }
             }
-            if (Raylib.IsMouseButtonPressed(MouseButton.Left))
-            {
-                settings.AddSeed(new(Raylib.GetMousePosition(), GetRandomColor()));
-            }
+
         }
         public static void UpdateGrid()
         {
@@ -270,55 +309,131 @@ namespace Voronoi
                 Raylib.DrawCircleV(settings.GetSeed(i).Position, 2.5f, Color.Black);
             }
         }
+        public static void SwitchRenderTypeToCPU()
+        {
+            settings.RenderType = RenderType.CPU;
+            Raylib.SetWindowSize(800, 600);
+            CurrentWidth = Raylib.GetScreenWidth();
+            CurrentHeight = Raylib.GetScreenHeight();
+            ResetSeeds();
+        }
+        public static void SwitchRenderTypeToGPU()
+        {
+            settings.RenderType = RenderType.GPU;
+            Raylib.SetWindowSize(16 * 80, 9 * 80);
+            CurrentWidth = Raylib.GetScreenWidth();
+            CurrentHeight = Raylib.GetScreenHeight();
+        }
+        public static void Render()
+        {
+            UpdateSettings();
+            if (Raylib.IsKeyPressed(KeyboardKey.C))
+            {
+                SwitchRenderTypeToCPU();
+            }
+            if (Raylib.IsKeyPressed(KeyboardKey.G))
+            {
+                SwitchRenderTypeToGPU();
+            }
+
+            if (settings.RenderType == RenderType.GPU)
+            {
+                float[] ures = [CurrentWidth, CurrentHeight];
+                if (Raylib.IsKeyPressed(KeyboardKey.One))
+                    settings.uID = RenderView.Color;
+                if (Raylib.IsKeyPressed(KeyboardKey.Two))
+                    settings.uID = RenderView.BlackWhite;
+
+                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "ures"), ures, ShaderUniformDataType.Vec2);
+                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "urandom"), settings.urandom, ShaderUniformDataType.Float);
+                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "uID"), settings.uID, ShaderUniformDataType.Int);
+
+                Raylib.BeginShaderMode(settings.shader);
+                Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
+                Raylib.EndShaderMode();
+            }
+            if (settings.RenderType == RenderType.CPU)
+            {
+                if (settings.Changed)
+                {
+                    UpdateGrid();
+                }
+                RenderVoronoi_Naive();
+            }
+        }
+        public static void DisplayWelcomeScreen()
+        {
+            int FontSize = 30;
+            int x = CurrentWidth / 3;
+            string TextWelcomeMessage = "Welcom to Boids Simulation";
+            int TextWelcomeMessageWidth = Raylib.MeasureText(TextWelcomeMessage, FontSize);
+            Raylib.DrawText(TextWelcomeMessage, CurrentWidth / 2 - TextWelcomeMessageWidth / 2, CurrentHeight / 8, FontSize, Color.White);
+
+            string Textmsg1 = "You can switch between modes of operation:";
+            int Textmsg1Width = Raylib.MeasureText(Textmsg1, FontSize);
+            Raylib.DrawText(Textmsg1, CurrentWidth / 2 - Textmsg1Width / 2, CurrentHeight / 5, FontSize, Color.White);
+            string[] TextParameters =
+            [
+                "C: To switch to CPU mode",
+                "\tR: To get another set of random seeds",
+                "\tD: Press and Hold and then",
+                "\t\tswitch to different distance modes (Euclidean(U), Manhattan(E), Mix(I))",
+                "\tF: Press and Hold and then",
+                "\t\tincrease or decrease the value using",
+                "\t\tthe right and left arrows respectively for the Mix distance mode",
+                "\tNOTE: You can add a seed by clicking the left mouse button",
+                "G: To switch to GPU mode",
+                "\tR: To get another set of random seeds",
+                "\t1: To switch to color view",
+                "\t2: To switch to Black/White view",
+            ];
+            for (int i = 0; i < TextParameters.Length; i++)
+            {
+                string TempText = TextParameters[i];
+                Raylib.DrawText(TempText, x - Textmsg1Width / 2, CurrentHeight / 5 + 100 + i * (int)(1.5f * FontSize), FontSize, Color.White);
+            }
+
+
+
+            string TextContinue = "Press Enter to continue.";
+            int TextContinueWidth = Raylib.MeasureText(TextContinue, FontSize / 2);
+            Raylib.DrawText(TextContinue, CurrentWidth / 2 - TextContinueWidth / 2, CurrentHeight - 20, FontSize / 2, Color.White);
+        }
         static void Main()
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            Raylib.InitWindow(800, 600, "Voronoi");
+            Raylib.InitWindow(1600, 900, "Voronoi");
 
-            Shader shader = Raylib.LoadShader(null, "Fshader.fs");
             settings = new();
-            ResetSeeds();
-            float urandom = random.NextSingle();
-            RenderType uID = RenderType.Normal;
+            State state = State.WelcomeScreen;
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
-                Raylib.ClearBackground(Color.Gray);
+                Raylib.ClearBackground(Color.Black);
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
-                float[] ures = [CurrentWidth, CurrentHeight];
-                if (Raylib.IsKeyPressed(KeyboardKey.R))
-                    urandom = random.NextSingle();
-                if (Raylib.IsKeyPressed(KeyboardKey.One))
-                    uID = RenderType.Normal;
-                if (Raylib.IsKeyPressed(KeyboardKey.Two))
-                    uID = RenderType.BlackWHite;
 
-                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "ures"), ures, ShaderUniformDataType.Vec2);
-                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "urandom"), urandom, ShaderUniformDataType.Float);
-                Raylib.SetShaderValue(shader, Raylib.GetShaderLocation(shader, "uID"), (int)uID, ShaderUniformDataType.Int);
+                if (Raylib.IsKeyPressed(KeyboardKey.Enter) && state == State.WelcomeScreen)
+                {
+                    state = State.Rendering;
+                    SwitchRenderTypeToGPU();
+                }
 
-                Raylib.BeginShaderMode(shader);
-                Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
-                Raylib.EndShaderMode();
-
-
-
-
-
-                //UpdateSettings();
-                //if (settings.Changed)
-                //{
-                //    UpdateGrid();
-                //}
-                //RenderVoronoi_Naive();
+                if (state == State.WelcomeScreen)
+                {
+                    DisplayWelcomeScreen();
+                }
+                else if (state == State.Rendering)
+                {
+                    Render();
+                }
 
                 Raylib.DrawFPS(0, 0);
                 Raylib.EndDrawing();
             }
 
-            Raylib.UnloadShader(shader);
+            Raylib.UnloadShader(settings.shader);
             Raylib.CloseWindow();
         }
     }
