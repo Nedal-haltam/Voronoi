@@ -16,9 +16,14 @@ namespace Voronoi
 {
     internal class Program
     {
+        public class Pixel(float DistanceToindex, int index)
+        {
+            public float DistanceToIndex = DistanceToindex;
+            public int index = index;
+        }
         public static readonly Random random = new();
         public static Settings settings;
-        public static List<List<int>> Grid = [];
+        public static List<List<Pixel>> Grid = [];
         public static readonly List<Color> COLOR_PALETTE =
         [
             new(){A = 0xFF, R = 0x00, G = 0x7B, B = 0xFF},
@@ -74,14 +79,18 @@ namespace Voronoi
         {
             Rendering, WelcomeScreen
         }
-        public struct Seed
+        public class Seed
         {
             public Vector2 Position;
+            public Vector2 Velocity;
             public Color Color;
             public Seed(Vector2 position, Color color)
             {
                 Position = position;
                 Color = color;
+                float angle = 2 * MathF.PI * random.NextSingle();
+                float mag = 100 + (400) * random.NextSingle();
+                Velocity = new(mag * MathF.Cos(angle), mag * MathF.Sin(angle));
             }
         }
         public struct Settings
@@ -93,6 +102,7 @@ namespace Voronoi
             public float urandom;
             public Shader shader;
             public RenderView uID;
+            public RenderTexture2D texture;
             public Settings()
             {
                 seeds = [];
@@ -102,6 +112,7 @@ namespace Voronoi
                 m_renderType = RenderType.CPU;
                 shader = Raylib.LoadShader(null, "Fshader.fs");
                 uID = RenderView.Color;
+                texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
             }
             public readonly void AddSeed(Seed seed)
             {
@@ -115,6 +126,18 @@ namespace Voronoi
             public readonly void ClearSeeds()
             {
                 seeds.Clear();
+            }
+            public void SetSeedPosition(int i, Vector2 NewPosition)
+            {
+                seeds[i].Position = NewPosition;
+            }
+            public void SetSeedVelocity(int i, Vector2 NewVelocity)
+            {
+                seeds[i].Velocity = NewVelocity;
+            }
+            public void SetSeed(int i, Seed seed)
+            {
+                seeds[i] = seed;
             }
             public DistanceType DistanceType
             {
@@ -245,6 +268,8 @@ namespace Voronoi
                 if (Raylib.IsWindowResized())
                 {
                     settings.Changed = true;
+                    CurrentWidth = Raylib.GetScreenWidth();
+                    CurrentHeight = Raylib.GetScreenHeight();
                 }
                 if (Raylib.IsKeyDown(KeyboardKey.D))
                 {
@@ -270,12 +295,57 @@ namespace Voronoi
             }
 
         }
-        public static void UpdateGrid()
+        public static void UpdateTexture()
         {
-            Grid.Clear();
+            Raylib.UnloadRenderTexture(settings.texture);
+            settings.texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
+            Raylib.BeginTextureMode(settings.texture);
+            Raylib.ClearBackground(Color.White);
+            for (int i = 0; i < Grid.Count; i++)
+            {
+                for (int j = 0; j < Grid[i].Count; j++)
+                {
+                    Color c = settings.GetSeed(Grid[i][j].index).Color;
+                    Raylib.DrawPixel(i, j, c);
+                }
+            }
+            Raylib.EndTextureMode();
+        }
+        public static void UpdateGridPrallelApproach()
+        {
             for (int i = 0; i < CurrentWidth; i++)
             {
-                List<int> temp = [];
+                List<Pixel> temp = [];
+                for (int j = 0; j < CurrentHeight; j++)
+                {
+                    temp.Add(new(Distance(new(i, j), settings.GetSeed(0).Position, settings.DistanceType), 0));
+                }
+                Grid.Add(temp);
+            }
+            for (int k = 0; k < settings.NumberOfSeeds; k++)
+            {
+                Parallel.For(0, CurrentWidth, i =>
+                {
+                    Parallel.For(0, CurrentHeight, j =>
+                    {
+                        Vector2 PixelPosition = new(i, j);
+                        Vector2 PixelandCurrentSmallestDistance = PixelPosition - settings.GetSeed(Grid[i][j].index).Position;
+                        Vector2 PixelandCurrentIndexDistance = PixelPosition - settings.GetSeed(k).Position;
+                        bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
+                        if (IfSmaller)
+                        {
+                            Grid[i][j].DistanceToIndex = Distance(new(i, j), settings.GetSeed(k).Position, settings.DistanceType);
+                            Grid[i][j].index = k;
+                        }
+                    });
+                });
+            }
+        }
+        public static void UpdateGridClassicalApproach()
+        {
+            for (int i = 0; i < CurrentWidth; i++)
+            {
+                List<Pixel> temp = [];
                 for (int j = 0; j < CurrentHeight; j++)
                 {
                     int index = 0;
@@ -288,41 +358,39 @@ namespace Voronoi
                         if (IfSmaller)
                             index = k;
                     }
-                    temp.Add(index);
+                    temp.Add(new(Distance(pixel, settings.GetSeed(index).Position, settings.DistanceType), index));
                 }
                 Grid.Add(temp);
             }
+        }
+        public static void UpdateGrid()
+        {
+            Grid.Clear();
+            UpdateGridPrallelApproach();
+
+            //UpdateGridClassicalApproach();
+
+            UpdateTexture();
             settings.Changed = false;
         }
         public static void RenderVoronoi_Naive()
         {
-            for (int i = 0; i < CurrentWidth; i++)
-            {
-                for (int j = 0; j < CurrentHeight; j++)
-                {
-                    Color c = settings.GetSeed(Grid[i][j]).Color;
-                    Raylib.DrawPixel(i, j, c);
-                }
-            }
+            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
-                Raylib.DrawCircleV(settings.GetSeed(i).Position, 2.5f, Color.Black);
+                Seed CurrentSeed = settings.GetSeed(i);
+                Raylib.DrawCircleV(CurrentSeed.Position, 2.5f, Color.Black);
+
             }
         }
         public static void SwitchRenderTypeToCPU()
         {
             settings.RenderType = RenderType.CPU;
-            Raylib.SetWindowSize(800, 600);
-            CurrentWidth = Raylib.GetScreenWidth();
-            CurrentHeight = Raylib.GetScreenHeight();
             ResetSeeds();
         }
         public static void SwitchRenderTypeToGPU()
         {
             settings.RenderType = RenderType.GPU;
-            Raylib.SetWindowSize(16 * 80, 9 * 80);
-            CurrentWidth = Raylib.GetScreenWidth();
-            CurrentHeight = Raylib.GetScreenHeight();
         }
         public static void Render()
         {
@@ -403,6 +471,7 @@ namespace Voronoi
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
             Raylib.InitWindow(1600, 900, "Voronoi");
+            //Raylib.InitWindow(800, 600, "Voronoi");
 
             settings = new();
             State state = State.WelcomeScreen;
@@ -421,7 +490,6 @@ namespace Voronoi
                 if (state == State.Rendering && Raylib.IsKeyPressed(KeyboardKey.H))
                 {
                     state = State.WelcomeScreen;
-                    Raylib.SetWindowSize(1600, 900);
                 }
 
                 if (state == State.WelcomeScreen)
@@ -436,7 +504,7 @@ namespace Voronoi
                 Raylib.DrawFPS(0, 0);
                 Raylib.EndDrawing();
             }
-
+            Raylib.UnloadRenderTexture(settings.texture);
             Raylib.UnloadShader(settings.shader);
             Raylib.CloseWindow();
         }
