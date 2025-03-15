@@ -381,6 +381,25 @@ namespace Voronoi
                 Seed CurrentSeed = settings.GetSeed(i);
                 Raylib.DrawCircleV(CurrentSeed.Position, 2.5f, Color.Black);
 
+                Vector2 newpos = CurrentSeed.Position + (Raylib.GetFrameTime() * CurrentSeed.Velocity);
+                if (0 <= newpos.X && newpos.X <= CurrentWidth)
+                {
+                    CurrentSeed.Position.X = newpos.X;
+                }
+                else
+                {
+                    CurrentSeed.Velocity.X *= -1;
+                }
+                if (0 <= newpos.Y && newpos.Y <= CurrentWidth)
+                {
+                    CurrentSeed.Position.Y = newpos.Y;
+                }
+                else
+                {
+                    CurrentSeed.Velocity.Y *= -1;
+                }
+                settings.SetSeed(i, CurrentSeed);
+                settings.Changed = true;
             }
         }
         public static void SwitchRenderTypeToCPU()
@@ -470,8 +489,8 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            Raylib.InitWindow(1600, 900, "Voronoi");
-            //Raylib.InitWindow(800, 600, "Voronoi");
+            //Raylib.InitWindow(1600, 900, "Voronoi");
+            Raylib.InitWindow(800, 600, "Voronoi");
 
             settings = new();
             State state = State.WelcomeScreen;
