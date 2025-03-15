@@ -481,7 +481,7 @@ namespace Voronoi
         public static void DisplayWelcomeScreen()
         {
             int FontSize = 30;
-            int x = CurrentWidth / 3;
+            int x = CurrentWidth / 4;
             string TextWelcomeMessage = "Welcom to Voronoi Diagram Rendering";
             int TextWelcomeMessageWidth = Raylib.MeasureText(TextWelcomeMessage, FontSize);
             Raylib.DrawText(TextWelcomeMessage, CurrentWidth / 2 - TextWelcomeMessageWidth / 2, CurrentHeight / 13, FontSize, Color.White);
@@ -495,7 +495,7 @@ namespace Voronoi
                 "C: To switch to CPU mode",
                 "\tR: To get another set of random seeds",
                 "\tD: Press and Hold and then",
-                "\t\tswitch to different distance modes by pressing (Euclidean(U), Manhattan(M), Mix(I))",
+                "\t\tswitch to different distance modes by pressing (Euclidean(U), Manhattan(M), Mix(I), Minkowski(K))",
                 "\tF: Press and Hold and then",
                 "\t\tincrease or decrease the value using",
                 "\t\tthe right and left arrows respectively for the Mix distance mode",
@@ -519,8 +519,8 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            //Raylib.InitWindow(1600, 900, "Voronoi");
-            Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
+            Raylib.InitWindow(1600, 900, "Voronoi");
+            //Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
 
             settings = new();
             State state = State.WelcomeScreen;
