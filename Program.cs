@@ -58,9 +58,19 @@ namespace Voronoi
         {
             Euclidean, Manhattan, Mix
         }
+        public struct Seed
+        {
+            public Vector2 Position;
+            public Color Color;
+            public Seed(Vector2 position, Color color)
+            {
+                Position = position;
+                Color = color;
+            }
+        }
         public struct Settings
         {
-            private List<Vector2> seeds = [];
+            private List<Seed> seeds = [];
             private DistanceType m_DistanceType;
             public bool Changed;
             private float m_MixFactor = 0.5f;
@@ -70,16 +80,16 @@ namespace Voronoi
                 DistanceType = DistanceType.Euclidean;
                 Changed = true;
             }
-            public void AddSeed(Vector2 seed)
+            public readonly void AddSeed(Seed seed)
             {
                 seeds.Add(seed);
                 settings.Changed = true;
             }
-            public Vector2 GetSeed(int i)
+            public readonly Seed GetSeed(int i)
             {
                 return seeds[i];
             }
-            public void ClearSeeds()
+            public readonly void ClearSeeds()
             {
                 seeds.Clear();
             }
@@ -107,7 +117,7 @@ namespace Voronoi
             {
                 get => seeds.Count;
             }
-            public readonly int DefualtNumberOfSeeds => 20;
+            public readonly int DefaultNumberOfSeeds => 20;
         }
         public static bool IsSmallerEuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
@@ -155,12 +165,18 @@ namespace Voronoi
 
             throw new Exception("UNREACHABLE");
         }
+        public static Color GetRandomColor()
+        {
+            return new() { A = 0xFF, R = (byte)random.Next(255), G = (byte)random.Next(255), B = (byte)random.Next(255) };
+        }
         public static void ResetSeeds()
         {
             settings.ClearSeeds();
-            for (int i = 0; i < settings.DefualtNumberOfSeeds; i++)
+            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
             {
-                settings.AddSeed(new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) });
+                Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                Color c = GetRandomColor();
+                settings.AddSeed(new(p, c));
             }
             settings.Changed = true;
         }
@@ -203,7 +219,7 @@ namespace Voronoi
             }
             if (Raylib.IsMouseButtonPressed(MouseButton.Left))
             {
-                settings.AddSeed(Raylib.GetMousePosition());
+                settings.AddSeed(new(Raylib.GetMousePosition(), GetRandomColor()));
             }
         }
         public static void UpdateGrid()
@@ -218,14 +234,13 @@ namespace Voronoi
                     Vector2 pixel = new(i, j);
                     for (int k = 0; k < settings.NumberOfSeeds; k++)
                     {
-                        Vector2 PixelandCurrentSmallestDistance = pixel - settings.GetSeed(index);
-                        Vector2 PixelandCurrentIndexDistance = pixel - settings.GetSeed(k);
+                        Vector2 PixelandCurrentSmallestDistance = pixel - settings.GetSeed(index).Position;
+                        Vector2 PixelandCurrentIndexDistance = pixel - settings.GetSeed(k).Position;
                         bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
                         if (IfSmaller)
                             index = k;
                     }
                     temp.Add(index);
-
                 }
                 Grid.Add(temp);
             }
@@ -237,13 +252,14 @@ namespace Voronoi
             {
                 for (int j = 0; j < CurrentHeight; j++)
                 {
-                    Color c = COLOR_PALETTE[Grid[i][j] % COLOR_PALETTE.Count];
+                    //Color c = COLOR_PALETTE[Grid[i][j] % COLOR_PALETTE.Count];
+                    Color c = settings.GetSeed(Grid[i][j]).Color;
                     Raylib.DrawPixel(i, j, c);
                 }
             }
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
-                Raylib.DrawCircleV(settings.GetSeed(i), 2.5f, Color.Black);
+                Raylib.DrawCircleV(settings.GetSeed(i).Position, 2.5f, Color.Black);
             }
         }
         static void Main()
