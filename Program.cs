@@ -253,7 +253,7 @@ namespace Voronoi
         {
             return [random.NextSingle(), random.NextSingle(), random.NextSingle(), 1.0f];
         }
-        public static void ResetSeeds()
+        public static void GenerateSeedsPatterns()
         {
             settings.ClearSeeds();
             for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
@@ -286,6 +286,22 @@ namespace Voronoi
             }
             settings.Changed = true;
         }
+        public static void GenerateSeedsRandom()
+        {
+            settings.ClearSeeds();
+            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
+            {
+                Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                Color c = GetRandomColor();
+                settings.AddSeed(new(p, c));
+            }
+            settings.Changed = true;
+        }
+        public static void GenerateSeeds()
+        {
+            GenerateSeedsPatterns();
+            //GenerateSeedsRandom();
+        }
         public static Color PointToColor(Vector2 p)
         {
             ushort x = (ushort)p.X;
@@ -309,7 +325,7 @@ namespace Voronoi
             {
                 if (Raylib.IsKeyPressed(KeyboardKey.R))
                 {
-                    ResetSeeds();
+                    GenerateSeeds();
                 }
                 if (Raylib.IsWindowResized())
                 {
@@ -359,8 +375,10 @@ namespace Voronoi
             }
             Raylib.EndTextureMode();
         }
-        public static void UpdateGridBetterAlgorithim()
+
+        public static void RenderVoronoiBetterAlgorithim()
         {
+            //UpdateGridBetterAlgorithim
             throw new NotImplementedException();
         }
         public static void UpdateGridPrallelApproach()
@@ -415,19 +433,33 @@ namespace Voronoi
                 Grid.Add(temp);
             }
         }
-        public static void UpdateGrid()
+        public static void RenderVoronoiClassicalApproach()
         {
-            Grid.Clear();
-            UpdateGridPrallelApproach();
-
-            //UpdateGridClassicalApproach();
-
-            UpdateTexture();
-            settings.Changed = false;
+            if (settings.Changed)
+            {
+                Grid.Clear();
+                UpdateGridClassicalApproach();
+                UpdateTexture();
+                settings.Changed = false;
+            }
+            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
+        }
+        public static void RenderVoronoiPrallelApproach()
+        {
+            if (settings.Changed)
+            {
+                Grid.Clear();
+                UpdateGridPrallelApproach();
+                UpdateTexture();
+                settings.Changed = false;
+            }
+            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
         }
         public static void RenderVoronoiCPU()
         {
-            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
+            //RenderVoronoiClassicalApproach();
+            RenderVoronoiPrallelApproach();
+            //RenderVoronoiBetterAlgorithim();
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
@@ -457,7 +489,7 @@ namespace Voronoi
         public static void SwitchRenderTypeToCPU()
         {
             settings.RenderType = RenderType.CPU;
-            ResetSeeds();
+            GenerateSeeds();
         }
         public static void SwitchRenderTypeToGPU()
         {
@@ -493,10 +525,6 @@ namespace Voronoi
             }
             if (settings.RenderType == RenderType.CPU)
             {
-                if (settings.Changed)
-                {
-                    UpdateGrid();
-                }
                 RenderVoronoiCPU();
             }
         }
