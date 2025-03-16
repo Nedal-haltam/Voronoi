@@ -173,7 +173,7 @@ namespace Voronoi
                     Changed = true;
                 }
             }
-            public readonly int DefaultNumberOfSeeds => 20;
+            public readonly int DefaultNumberOfSeeds => 100;
         }
         public static bool IsSmallerEuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
@@ -258,7 +258,29 @@ namespace Voronoi
             settings.ClearSeeds();
             for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
             {
-                Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                //float angle = i * MathF.PI / 5;
+                //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                float f = 8.0f;
+                float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
+                float x = CurrentWidth / 2 + i * MathF.Cos(angle);
+                float y = CurrentHeight / 2 + i * MathF.Sin(angle);
+                if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
+                if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
+                Vector2 p = new() { X = x, Y = y };
+                Color c = GetRandomColor();
+                settings.AddSeed(new(p, c));
+            }
+            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
+            {
+                //float angle = i * MathF.PI / 5;
+                //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                float f = 8.0f;
+                float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
+                float x = CurrentWidth / 2 + i * MathF.Cos(angle + MathF.PI);
+                float y = CurrentHeight / 2 + i * MathF.Sin(angle + MathF.PI);
+                if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
+                if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
+                Vector2 p = new() { X = x, Y = y };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
@@ -403,7 +425,7 @@ namespace Voronoi
             UpdateTexture();
             settings.Changed = false;
         }
-        public static void RenderVoronoi_Naive()
+        public static void RenderVoronoiCPU()
         {
             Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
             for (int i = 0; i < settings.NumberOfSeeds; i++)
@@ -475,7 +497,7 @@ namespace Voronoi
                 {
                     UpdateGrid();
                 }
-                RenderVoronoi_Naive();
+                RenderVoronoiCPU();
             }
         }
         public static void DisplayWelcomeScreen()
@@ -519,8 +541,8 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            Raylib.InitWindow(1600, 900, "Voronoi");
-            //Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
+            //Raylib.InitWindow(1600, 900, "Voronoi");
+            Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
 
             settings = new();
             State state = State.WelcomeScreen;
