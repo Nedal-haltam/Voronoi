@@ -1,25 +1,31 @@
 ﻿
 using Raylib_cs;
+//using static Raylib_cs.Rlgl;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
+using System.Net.Mail;
 using System.Numerics;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Xml;
 using static Voronoi.Program;
 using Color = Raylib_cs.Color;
+using Rectangle = Raylib_cs.Rectangle;
 
 namespace Voronoi
 {
     internal class Program
     {
-        public class Pixel(float DistanceToindex, int index)
+        public class Pixel(Vector2 Position, float DistanceToSeed, int SeedIndex)
         {
-            public float DistanceToIndex = DistanceToindex;
-            public int index = index;
+            public Vector2 m_Position = Position;
+            public float m_DistanceToIndex = DistanceToSeed;
+            public int m_index = SeedIndex;
         }
         public static readonly Random random = new();
         public static Settings settings;
@@ -81,63 +87,63 @@ namespace Voronoi
         }
         public class Seed
         {
-            public Vector2 Position;
-            public Vector2 Velocity;
-            public Color Color;
+            public Vector2 m_Position;
+            public Vector2 m_Velocity;
+            public Color m_Color;
             public Seed(Vector2 position, Color color)
             {
-                Position = position;
-                Color = color;
+                m_Position = position;
+                m_Color = color;
                 float angle = 2 * MathF.PI * random.NextSingle();
                 float mag = 100 + (400) * random.NextSingle();
-                Velocity = new(mag * MathF.Cos(angle), mag * MathF.Sin(angle));
+                m_Velocity = new(mag * MathF.Cos(angle), mag * MathF.Sin(angle));
             }
         }
         public struct Settings
         {
-            private List<Seed> seeds = [];
+            public readonly List<Seed> m_Seeds = [];
             private DistanceType m_DistanceType;
-            public bool Changed;
+            public bool m_Changed;
             private float m_MixFactor = 0.5f;
-            public float urandom;
-            public Shader shader;
-            public RenderView uID;
-            public RenderTexture2D texture;
+            public float m_urandom;
+            public Shader m_shader;
+            public RenderView m_uID;
+            public RenderTexture2D m_texture;
             public Settings()
             {
-                seeds = [];
-                DistanceType = DistanceType.Euclidean;
-                Changed = true;
-                urandom = random.NextSingle();
+                m_Seeds = [];
+                m_DistanceType = DistanceType.Euclidean;
+                m_Changed = true;
+                m_urandom = random.NextSingle();
                 m_renderType = RenderType.CPU;
-                shader = Raylib.LoadShader(null, "Fshader.fs");
-                uID = RenderView.Color;
-                texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
+                m_shader = Raylib.LoadShader(null, "Fshader.fs");
+                m_uID = RenderView.Color;
+                m_texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
             }
             public readonly void AddSeed(Seed seed)
             {
-                seeds.Add(seed);
-                settings.Changed = true;
+                m_Seeds.Add(seed);
+                settings.m_Changed = true;
             }
             public readonly Seed GetSeed(int i)
             {
-                return seeds[i];
+                return m_Seeds[i];
             }
             public readonly void ClearSeeds()
             {
-                seeds.Clear();
+                m_Seeds.Clear();
             }
-            public void SetSeedPosition(int i, Vector2 NewPosition)
+            public readonly void SetSeedPosition(int i, Vector2 NewPosition)
             {
-                seeds[i].Position = NewPosition;
+                m_Seeds[i].m_Position = NewPosition;
             }
-            public void SetSeedVelocity(int i, Vector2 NewVelocity)
+            public readonly void SetSeedVelocity(int i, Vector2 NewVelocity)
             {
-                seeds[i].Velocity = NewVelocity;
+                m_Seeds[i].m_Velocity = NewVelocity;
             }
-            public void SetSeed(int i, Seed seed)
+            public readonly void SetSeed(int i, Seed seed)
             {
-                seeds[i] = seed;
+                m_Seeds[i] = seed;
             }
             public DistanceType DistanceType
             {
@@ -145,7 +151,7 @@ namespace Voronoi
                 set
                 {
                     m_DistanceType = value;
-                    Changed = true;
+                    m_Changed = true;
                 }
             }
             public float MixFactor
@@ -156,29 +162,34 @@ namespace Voronoi
                     m_MixFactor = value;
                     if (m_MixFactor > 1) m_MixFactor = 1.0f;
                     if (m_MixFactor < 0) m_MixFactor = 0.0f;
-                    Changed = true;
+                    m_Changed = true;
                 }
             }
             public readonly int NumberOfSeeds
             {
-                get => seeds.Count;
+                get => m_Seeds.Count;
             }
             private RenderType m_renderType;
             public RenderType RenderType
             {
-                get => m_renderType;
+                readonly get => m_renderType;
                 set
                 {
                     m_renderType = value;
-                    Changed = true;
+                    m_Changed = true;
                 }
             }
-            public readonly int DefaultNumberOfSeeds => 100;
+#pragma warning disable IDE0079 // Remove unnecessary suppression
+#pragma warning disable CA1822 // Mark members as static
+            public readonly int DefaultNumberOfSeeds => 3;
+#pragma warning restore IDE0079 // Remove unnecessary suppression
+#pragma warning disable IDE0079 // Remove unnecessary suppression
+#pragma warning restore CA1822 // Mark members as static
         }
+#pragma warning restore IDE0079 // Remove unnecessary suppression
         public static bool IsSmallerEuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
-            float p = 2.0f;
-            return MathF.Pow((MathF.Pow(MathF.Abs(Vec1.X), p) + MathF.Pow(MathF.Abs(Vec1.Y), p)), 1.0f / p) < MathF.Pow((MathF.Pow(MathF.Abs(Vec2.X), p) + MathF.Pow(MathF.Abs(Vec2.Y), p)), 1.0f / p);
+            return Vec1.LengthSquared() < Vec2.LengthSquared();
         }
         public static bool IsSmallerMinkowskiDistance(Vector2 Vec1, Vector2 Vec2)
         {
@@ -230,7 +241,7 @@ namespace Voronoi
         public static float MixDistance(Vector2 Vec1, Vector2 Vec2)
         {
             Vector2 diff = Vec1 - Vec2;
-            return ((1 - settings.MixFactor) * MathF.Sqrt(Vec1.X * Vec1.X + Vec1.Y * Vec1.Y)) + (settings.MixFactor * (MathF.Abs(Vec1.X) + MathF.Abs(Vec1.Y)));
+            return ((1 - settings.MixFactor) * MathF.Sqrt(diff.X * diff.X + diff.Y * diff.Y)) + (settings.MixFactor * (MathF.Abs(diff.X) + MathF.Abs(diff.Y)));
         }
         public static float Distance(Vector2 Vec1, Vector2 Vec2, DistanceType type)
         {
@@ -284,7 +295,7 @@ namespace Voronoi
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
-            settings.Changed = true;
+            settings.m_Changed = true;
         }
         public static void GenerateSeedsRandom()
         {
@@ -295,7 +306,7 @@ namespace Voronoi
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
-            settings.Changed = true;
+            settings.m_Changed = true;
         }
         public static void GenerateSeeds()
         {
@@ -318,7 +329,7 @@ namespace Voronoi
             {
                 if (Raylib.IsKeyPressed(KeyboardKey.R))
                 {
-                    settings.urandom = random.NextSingle();
+                    settings.m_urandom = random.NextSingle();
                 }
             }
             if (settings.RenderType == RenderType.CPU)
@@ -329,7 +340,7 @@ namespace Voronoi
                 }
                 if (Raylib.IsWindowResized())
                 {
-                    settings.Changed = true;
+                    settings.m_Changed = true;
                     CurrentWidth = Raylib.GetScreenWidth();
                     CurrentHeight = Raylib.GetScreenHeight();
                 }
@@ -361,34 +372,30 @@ namespace Voronoi
         }
         public static void UpdateTexture()
         {
-            Raylib.UnloadRenderTexture(settings.texture);
-            settings.texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
-            Raylib.BeginTextureMode(settings.texture);
+            Raylib.UnloadRenderTexture(settings.m_texture);
+            settings.m_texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
+            Raylib.BeginTextureMode(settings.m_texture);
             Raylib.ClearBackground(Color.White);
             for (int i = 0; i < Grid.Count; i++)
             {
                 for (int j = 0; j < Grid[i].Count; j++)
                 {
-                    Color c = settings.GetSeed(Grid[i][j].index).Color;
+                    Color c = settings.GetSeed(Grid[i][j].m_index).m_Color;
                     Raylib.DrawPixel(i, j, c);
                 }
             }
             Raylib.EndTextureMode();
         }
-
-        public static void RenderVoronoiBetterAlgorithim()
-        {
-            //UpdateGridBetterAlgorithim
-            throw new NotImplementedException();
-        }
         public static void UpdateGridPrallelApproach()
         {
+            Vector2 CurrentLocation;
             for (int i = 0; i < CurrentWidth; i++)
             {
                 List<Pixel> temp = [];
                 for (int j = 0; j < CurrentHeight; j++)
                 {
-                    temp.Add(new(Distance(new(i, j), settings.GetSeed(0).Position, settings.DistanceType), 0));
+                    CurrentLocation = new(i, j);
+                    temp.Add(new(CurrentLocation, Distance(CurrentLocation, settings.GetSeed(0).m_Position, settings.DistanceType), 0));
                 }
                 Grid.Add(temp);
             }
@@ -398,14 +405,14 @@ namespace Voronoi
                 {
                     Parallel.For(0, CurrentHeight, j =>
                     {
-                        Vector2 PixelPosition = new(i, j);
-                        Vector2 PixelandCurrentSmallestDistance = PixelPosition - settings.GetSeed(Grid[i][j].index).Position;
-                        Vector2 PixelandCurrentIndexDistance = PixelPosition - settings.GetSeed(k).Position;
+                        Vector2 PixelPosition = Grid[i][j].m_Position;
+                        Vector2 PixelandCurrentSmallestDistance = PixelPosition - settings.GetSeed(Grid[i][j].m_index).m_Position;
+                        Vector2 PixelandCurrentIndexDistance = PixelPosition - settings.GetSeed(k).m_Position;
                         bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
                         if (IfSmaller)
                         {
-                            Grid[i][j].DistanceToIndex = Distance(new(i, j), settings.GetSeed(k).Position, settings.DistanceType);
-                            Grid[i][j].index = k;
+                            Grid[i][j].m_DistanceToIndex = Distance(PixelPosition, settings.GetSeed(k).m_Position, settings.DistanceType);
+                            Grid[i][j].m_index = k;
                         }
                     });
                 });
@@ -422,38 +429,38 @@ namespace Voronoi
                     Vector2 pixel = new(i, j);
                     for (int k = 0; k < settings.NumberOfSeeds; k++)
                     {
-                        Vector2 PixelandCurrentSmallestDistance = pixel - settings.GetSeed(index).Position;
-                        Vector2 PixelandCurrentIndexDistance = pixel - settings.GetSeed(k).Position;
+                        Vector2 PixelandCurrentSmallestDistance = pixel - settings.GetSeed(index).m_Position;
+                        Vector2 PixelandCurrentIndexDistance = pixel - settings.GetSeed(k).m_Position;
                         bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
                         if (IfSmaller)
                             index = k;
                     }
-                    temp.Add(new(Distance(pixel, settings.GetSeed(index).Position, settings.DistanceType), index));
+                    temp.Add(new(pixel, Distance(pixel, settings.GetSeed(index).m_Position, settings.DistanceType), index));
                 }
                 Grid.Add(temp);
             }
         }
         public static void RenderVoronoiClassicalApproach()
         {
-            if (settings.Changed)
+            if (settings.m_Changed)
             {
                 Grid.Clear();
                 UpdateGridClassicalApproach();
                 UpdateTexture();
-                settings.Changed = false;
+                settings.m_Changed = false;
             }
-            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
+            Raylib.DrawTextureRec(settings.m_texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
         }
         public static void RenderVoronoiPrallelApproach()
         {
-            if (settings.Changed)
+            if (settings.m_Changed)
             {
                 Grid.Clear();
                 UpdateGridPrallelApproach();
                 UpdateTexture();
-                settings.Changed = false;
+                settings.m_Changed = false;
             }
-            Raylib.DrawTextureRec(settings.texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
+            Raylib.DrawTextureRec(settings.m_texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
         }
         public static void RenderVoronoiCPU()
         {
@@ -463,27 +470,27 @@ namespace Voronoi
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
-                Raylib.DrawCircleV(CurrentSeed.Position, 2.5f, Color.Black);
+                Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.Black);
                 continue;
-                Vector2 newpos = CurrentSeed.Position + (Raylib.GetFrameTime() * CurrentSeed.Velocity);
+                Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
                 if (0 <= newpos.X && newpos.X <= CurrentWidth)
                 {
-                    CurrentSeed.Position.X = newpos.X;
+                    CurrentSeed.m_Position.X = newpos.X;
                 }
                 else
                 {
-                    CurrentSeed.Velocity.X *= -1;
+                    CurrentSeed.m_Velocity.X *= -1;
                 }
                 if (0 <= newpos.Y && newpos.Y <= CurrentWidth)
                 {
-                    CurrentSeed.Position.Y = newpos.Y;
+                    CurrentSeed.m_Position.Y = newpos.Y;
                 }
                 else
                 {
-                    CurrentSeed.Velocity.Y *= -1;
+                    CurrentSeed.m_Velocity.Y *= -1;
                 }
                 settings.SetSeed(i, CurrentSeed);
-                settings.Changed = true;
+                settings.m_Changed = true;
             }
         }
         public static void SwitchRenderTypeToCPU()
@@ -511,15 +518,15 @@ namespace Voronoi
             {
                 float[] ures = [CurrentWidth, CurrentHeight];
                 if (Raylib.IsKeyPressed(KeyboardKey.One))
-                    settings.uID = RenderView.Color;
+                    settings.m_uID = RenderView.Color;
                 if (Raylib.IsKeyPressed(KeyboardKey.Two))
-                    settings.uID = RenderView.BlackWhite;
+                    settings.m_uID = RenderView.BlackWhite;
 
-                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "ures"), ures, ShaderUniformDataType.Vec2);
-                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "urandom"), settings.urandom, ShaderUniformDataType.Float);
-                Raylib.SetShaderValue(settings.shader, Raylib.GetShaderLocation(settings.shader, "uID"), settings.uID, ShaderUniformDataType.Int);
+                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "ures"), ures, ShaderUniformDataType.Vec2);
+                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "urandom"), settings.m_urandom, ShaderUniformDataType.Float);
+                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "uID"), settings.m_uID, ShaderUniformDataType.Int);
 
-                Raylib.BeginShaderMode(settings.shader);
+                Raylib.BeginShaderMode(settings.m_shader);
                 Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
                 Raylib.EndShaderMode();
             }
@@ -569,11 +576,12 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            //Raylib.InitWindow(1600, 900, "Voronoi");
-            Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
-
+            Raylib.InitWindow(800, 600, "Voronoi");
+            //Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
             settings = new();
             State state = State.WelcomeScreen;
+            CurrentWidth = Raylib.GetScreenWidth();
+            CurrentHeight = Raylib.GetScreenHeight();
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
@@ -599,12 +607,11 @@ namespace Voronoi
                 {
                     Render();
                 }
-
                 Raylib.DrawFPS(0, 0);
                 Raylib.EndDrawing();
             }
-            Raylib.UnloadRenderTexture(settings.texture);
-            Raylib.UnloadShader(settings.shader);
+            Raylib.UnloadRenderTexture(settings.m_texture);
+            Raylib.UnloadShader(settings.m_shader);
             Raylib.CloseWindow();
         }
     }
