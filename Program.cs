@@ -20,12 +20,6 @@ namespace Voronoi
 {
     internal class Program
     {
-        public class Pixel(Vector2 Position, float DistanceToSeed, int SeedIndex)
-        {
-            public Vector2 m_Position = Position;
-            public float m_DistanceToIndex = DistanceToSeed;
-            public int m_index = SeedIndex;
-        }
         public static readonly Random random = new();
         public static Settings settings;
         public static List<List<Pixel>> Grid = [];
@@ -64,8 +58,6 @@ namespace Voronoi
             new(){A = 0xFF, R = 0x00, G = 0xC3, B = 0xFF},
             new(){A = 0xFF, R = 0xFF, G = 0xDB, B = 0x00},
         ];
-
-
         public static int CurrentWidth;
         public static int CurrentHeight;
         public enum DistanceType
@@ -83,6 +75,54 @@ namespace Voronoi
         public enum State
         {
             Rendering, WelcomeScreen
+        }
+        public class Pixel(Vector2 Position, float DistanceToSeed, int SeedIndex)
+        {
+            public Vector2 m_Position = Position;
+            public float m_DistanceToIndex = DistanceToSeed;
+            public int m_index = SeedIndex;
+        }
+        public class Cell
+        {
+            public List<Vector2> m_Vertices;
+            public Vector2 m_Center;
+            public Cell()
+            {
+                m_Vertices = [];
+                m_Center = new();
+            }
+            public Cell(List<Vector2> vertices, Vector2 center)
+            {
+                m_Vertices = vertices;
+                m_Center = center;
+            }
+        }
+        public class Box : Cell
+        {
+            public Vector2 m_Min, m_Max;
+            public Rectangle m_Bounds;
+            public List<Cell> m_Cells;
+            public Box() : base()
+            {
+                m_Min = new(0, 0);
+                m_Max = new(0, 0);
+                m_Bounds = new();
+                m_Cells = [];
+            }
+            public Box(float Padding, List<Vector2> vertices, Vector2 center) : base(vertices, center)
+            {
+                if (vertices.Count != 4)
+                    throw new Exception("Invalid box\n");
+                m_Min = vertices[0] - new Vector2(Padding, Padding);
+                m_Max = vertices[2] + new Vector2(Padding, Padding);
+                m_Bounds = new(m_Min, new(m_Max.X - m_Min.X, m_Max.Y - m_Min.Y));
+                m_Cells = [];
+            }
+        }
+        public struct Bisector(Vector2 a, Vector2 b)
+        {
+            public Vector2 m_a = a;
+            public Vector2 m_b = b;
         }
         public class Seed
         {
@@ -178,14 +218,14 @@ namespace Voronoi
                     m_Changed = true;
                 }
             }
-#pragma warning disable IDE0079 // Remove unnecessary suppression
-#pragma warning disable CA1822 // Mark members as static
-            public readonly int DefaultNumberOfSeeds => 25;
-#pragma warning restore IDE0079 // Remove unnecessary suppression
-#pragma warning disable IDE0079 // Remove unnecessary suppression
-#pragma warning restore CA1822 // Mark members as static
         }
-#pragma warning restore IDE0079 // Remove unnecessary suppression
+
+        public static int DefaultNumberOfSeeds = 70;
+        public static List<Vector2> texcoords = [];
+        public static List<Vector2> pts = [];
+        public static Vector2 center = new(0, 0);
+        public static List<Seed> seg = [];
+        public static List<bool> segb = [];
         public static bool IsSmallerEuclideanDistance(Vector2 Vec1, Vector2 Vec2)
         {
             return Vec1.LengthSquared() < Vec2.LengthSquared();
@@ -266,30 +306,27 @@ namespace Voronoi
         public static void GenerateSeedsPatterns()
         {
             settings.ClearSeeds();
-            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
+            float mag = 5;
+            for (int i = 0; i < DefaultNumberOfSeeds; i++)
             {
-                //float angle = i * MathF.PI / 5;
-                //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
                 float f = 8.0f;
-                float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
-                float x = CurrentWidth / 2 + 4*i * MathF.Cos(angle);
-                float y = CurrentHeight / 2 + 4*i * MathF.Sin(angle);
-                if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
-                if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
+                float angle = i * 2 * f * MathF.PI / DefaultNumberOfSeeds;
+                float x = CurrentWidth / 2 + mag * i * MathF.Cos(angle);
+                float y = CurrentHeight / 2 + mag * i * MathF.Sin(angle);
+                x = float.Clamp(x, 11, CurrentWidth - 11);
+                y = float.Clamp(y, 11, CurrentHeight - 11);
                 Vector2 p = new() { X = x, Y = y };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
-            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
+            for (int i = 0; i < DefaultNumberOfSeeds; i++)
             {
-                //float angle = 4*i * MathF.PI / 5;
-                //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
                 float f = 8.0f;
-                float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
-                float x = CurrentWidth / 2 + 4*i * MathF.Cos(angle + MathF.PI);
-                float y = CurrentHeight / 2 + 4*i * MathF.Sin(angle + MathF.PI);
-                if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
-                if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
+                float angle = i * 2 * f * MathF.PI / DefaultNumberOfSeeds;
+                float x = CurrentWidth / 2 + mag * i * MathF.Cos(angle + MathF.PI);
+                float y = CurrentHeight / 2 + mag * i * MathF.Sin(angle + MathF.PI);
+                x = float.Clamp(x, 11, CurrentWidth - 11);
+                y = float.Clamp(y, 11, CurrentHeight - 11);
                 Vector2 p = new() { X = x, Y = y };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
@@ -299,7 +336,7 @@ namespace Voronoi
         public static void GenerateSeedsRandom()
         {
             settings.ClearSeeds();
-            for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
+            for (int i = 0; i < DefaultNumberOfSeeds; i++)
             {
                 Vector2 p = new() { X = random.Next(10, Raylib.GetScreenWidth() - 10), Y = random.Next(10, Raylib.GetScreenHeight() - 10) };
                 Color c = GetRandomColor();
@@ -309,8 +346,8 @@ namespace Voronoi
         }
         public static void GenerateSeeds()
         {
-            //GenerateSeedsPatterns();
-            GenerateSeedsRandom();
+            GenerateSeedsPatterns();
+            //GenerateSeedsRandom();
         }
         public static Color PointToColor(Vector2 p)
         {
@@ -471,8 +508,8 @@ namespace Voronoi
                 float MaxX = CurrentWidth - 10;
                 float MaxY = CurrentHeight - 10;
                 float Padding = 5;
-                box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
-                Vcells = GetVoronoiCellFast(sites);                
+                Box box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
+                Vcells = GetVoronoiCellFast(sites, box);                
                 Vcells.ForEach(cell => cell.m_Vertices.Reverse());
                 settings.m_Changed = false;
             }
@@ -480,7 +517,7 @@ namespace Voronoi
                 throw new Exception("Vcells count doesn't equall sites count\n");
             for (int i = 0; i < sites.Count; i++)
             {
-                DrawPoly(sites[i].m_Position, Vcells[i].m_Vertices.ToArray(), sites[i].m_Color);
+                DrawPoly(sites[i].m_Position, [.. Vcells[i].m_Vertices], sites[i].m_Color);
                 //for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
                 //{
                 //    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], r, sites[i].m_Color);
@@ -496,8 +533,8 @@ namespace Voronoi
             {
                 Seed CurrentSeed = settings.GetSeed(i);
                 Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
-                //continue;
                 Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
+                continue;
                 if (11 <= newpos.X && newpos.X <= CurrentWidth - 11)
                 {
                     CurrentSeed.m_Position.X = newpos.X;
@@ -630,44 +667,6 @@ namespace Voronoi
                 DrawTexturePoly(texture, center, texcoordsPTR, texcoords.Length, c);
             }
         }
-
-        public class Cell
-        {
-            public List<Vector2> m_Vertices;
-            public Vector2 m_Center;
-            public Cell()
-            {
-                m_Vertices = [];
-                m_Center = new();
-            }
-            public Cell(List<Vector2> vertices, Vector2 center)
-            {
-                m_Vertices = vertices;
-                m_Center = center;
-            }
-        }
-        public class Box : Cell
-        {
-            public Vector2 m_Min, m_Max;
-            public Rectangle m_Bounds;
-            public List<Cell> m_Cells;
-            public Box() : base()
-            {
-                m_Min = new(0, 0);
-                m_Max = new(0, 0);
-                m_Bounds = new();
-                m_Cells = [];
-            }
-            public Box(float Padding, List<Vector2> vertices, Vector2 center) : base(vertices, center)
-            {
-                if (vertices.Count != 4)
-                    throw new Exception("Invalid box\n");
-                m_Min = vertices[0] - new Vector2(Padding, Padding);
-                m_Max = vertices[2] + new Vector2(Padding, Padding);
-                m_Bounds = new(m_Min, new(m_Max.X - m_Min.X, m_Max.Y - m_Min.Y));
-                m_Cells = [];
-            }
-        }
         public static (List<Vector2>?, int?, int?) CheckLineIntersectPoly(Vector2 StartPosisiton, Vector2 EndPosisiton, List<Vector2> Poly)
         {
             List<Vector2> ret = [];
@@ -683,13 +682,6 @@ namespace Voronoi
             }
             return ((ret.Count > 0) ? ret : null, (retints.Count > 0) ? retints[0] : null, (retints.Count > 1) ? retints[1] : null);
         }
-        public static Box box = new();
-        public static List<Vector2> texcoords = [];
-        public static List<Vector2> pts = [];
-        public static Vector2 center = new(0, 0);
-        public static List<Seed> seg = [];
-        public static List<bool> segb = [];
-        public static float r = 3.5f;
         public static int Orientation(Vector2 p, Vector2 q, Vector2 r)
         {
             float val = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y);
@@ -742,11 +734,6 @@ namespace Voronoi
             }
             return null;
         }
-        public struct Bisector(Vector2 a, Vector2 b)
-        {
-            public Vector2 m_a = a;
-            public Vector2 m_b = b;
-        }
         public static float BisectorEquation(float x, float a, float b, float c) => (a * x + c) / -b;
         public static Bisector GetBisector(Vector2 p1, Vector2 p2)
         {
@@ -763,7 +750,7 @@ namespace Voronoi
             Vector2 b2 = new(v0.X - 2*CurrentWidth * MathF.Cos(angle) , v0.Y - 2*CurrentHeight * MathF.Sin(angle));
             return new(b2, b1);
         }
-        public static List<Cell> GetVoronoiCellFast(List<Seed> sites)
+        public static List<Cell> GetVoronoiCellFast(List<Seed> sites, Box box)
         {
             List<Cell> output = [];
             for (int i = 0; i < sites.Count; i++)
@@ -791,7 +778,7 @@ namespace Voronoi
                             newCellVertices.Add(intersects[1]);
                             newCellVertices.Add(intersects[0]);
 
-                            if (!Raylib.CheckCollisionPointPoly(cell.m_Center, newCellVertices.ToArray()))
+                            if (!Raylib.CheckCollisionPointPoly(cell.m_Center, [.. newCellVertices]))
                             {
                                 newCellVertices.Clear();
                                 newCellVertices.Add(intersects[1]);
@@ -826,9 +813,9 @@ namespace Voronoi
             }
             for (int i = 0; i < seg.Count; i++)
             {
-                Raylib.DrawCircleV(seg[i].m_Position, r, Color.White);
+                Raylib.DrawCircleV(seg[i].m_Position, 4, Color.White);
                 Vector2 mp = Raylib.GetMousePosition();
-                if (Raylib.CheckCollisionPointCircle(mp, seg[i].m_Position, 5 * r))
+                if (Raylib.CheckCollisionPointCircle(mp, seg[i].m_Position, 5 * 4))
                 {
                     if (Raylib.IsMouseButtonPressed(MouseButton.Left))
                     {
@@ -854,15 +841,15 @@ namespace Voronoi
             float MaxX = CurrentWidth;
             float MaxY = CurrentHeight;
             float Padding = 5;
-            box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
-            List<Cell> Vcells = GetVoronoiCellFast(seg);
+            Box box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
+            List<Cell> Vcells = GetVoronoiCellFast(seg, box);
             for (int i = 0; i < Vcells.Count; i++)
             {
                 for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
                 {
-                    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], r, sites[i].m_Color);
+                    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], 4, sites[i].m_Color);
                 }
-                Raylib.DrawCircleV(Vcells[i].m_Center, r, Color.White);
+                Raylib.DrawCircleV(Vcells[i].m_Center, 4, Color.White);
             }
         }
         static void Main()
@@ -882,7 +869,6 @@ namespace Voronoi
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
 
-                //RenderSegments();
                 if (state == State.WelcomeScreen && Raylib.IsKeyPressed(KeyboardKey.Enter))
                 {
                     state = State.Rendering;
