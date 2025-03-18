@@ -1,5 +1,4 @@
-﻿
-using Raylib_cs;
+﻿using Raylib_cs;
 //using static Raylib_cs.Rlgl;
 using System;
 using System.Collections.Generic;
@@ -95,7 +94,7 @@ namespace Voronoi
                 m_Position = position;
                 m_Color = color;
                 float angle = 2 * MathF.PI * random.NextSingle();
-                float mag = 100 + (400) * random.NextSingle();
+                float mag = 10 + (40) * random.NextSingle();
                 m_Velocity = new(mag * MathF.Cos(angle), mag * MathF.Sin(angle));
             }
         }
@@ -181,7 +180,7 @@ namespace Voronoi
             }
 #pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning disable CA1822 // Mark members as static
-            public readonly int DefaultNumberOfSeeds => 3;
+            public readonly int DefaultNumberOfSeeds => 25;
 #pragma warning restore IDE0079 // Remove unnecessary suppression
 #pragma warning disable IDE0079 // Remove unnecessary suppression
 #pragma warning restore CA1822 // Mark members as static
@@ -273,8 +272,8 @@ namespace Voronoi
                 //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
                 float f = 8.0f;
                 float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
-                float x = CurrentWidth / 2 + i * MathF.Cos(angle);
-                float y = CurrentHeight / 2 + i * MathF.Sin(angle);
+                float x = CurrentWidth / 2 + 4*i * MathF.Cos(angle);
+                float y = CurrentHeight / 2 + 4*i * MathF.Sin(angle);
                 if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
                 if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
                 Vector2 p = new() { X = x, Y = y };
@@ -283,12 +282,12 @@ namespace Voronoi
             }
             for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
             {
-                //float angle = i * MathF.PI / 5;
+                //float angle = 4*i * MathF.PI / 5;
                 //Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
                 float f = 8.0f;
                 float angle = i * 2 * f * MathF.PI / settings.DefaultNumberOfSeeds;
-                float x = CurrentWidth / 2 + i * MathF.Cos(angle + MathF.PI);
-                float y = CurrentHeight / 2 + i * MathF.Sin(angle + MathF.PI);
+                float x = CurrentWidth / 2 + 4*i * MathF.Cos(angle + MathF.PI);
+                float y = CurrentHeight / 2 + 4*i * MathF.Sin(angle + MathF.PI);
                 if (!(0 <= x && x <= CurrentWidth)) x = float.Clamp(x, 0, CurrentWidth);
                 if (!(0 <= y && y <= CurrentHeight)) y = float.Clamp(y, 0, CurrentHeight);
                 Vector2 p = new() { X = x, Y = y };
@@ -302,7 +301,7 @@ namespace Voronoi
             settings.ClearSeeds();
             for (int i = 0; i < settings.DefaultNumberOfSeeds; i++)
             {
-                Vector2 p = new() { X = random.Next(Raylib.GetScreenWidth()), Y = random.Next(Raylib.GetScreenHeight()) };
+                Vector2 p = new() { X = random.Next(10, Raylib.GetScreenWidth() - 10), Y = random.Next(10, Raylib.GetScreenHeight() - 10) };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
@@ -310,8 +309,8 @@ namespace Voronoi
         }
         public static void GenerateSeeds()
         {
-            GenerateSeedsPatterns();
-            //GenerateSeedsRandom();
+            //GenerateSeedsPatterns();
+            GenerateSeedsRandom();
         }
         public static Color PointToColor(Vector2 p)
         {
@@ -462,18 +461,44 @@ namespace Voronoi
             }
             Raylib.DrawTextureRec(settings.m_texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
         }
+        public static List<Cell> Vcells = [];
+        public static void RenderVoronoiFast(List<Seed> sites)
+        {
+            if (settings.m_Changed)
+            {
+                float MinX = 10;
+                float MinY = 10;
+                float MaxX = CurrentWidth - 10;
+                float MaxY = CurrentHeight - 10;
+                float Padding = 5;
+                box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
+                Vcells = GetVoronoiCellFast(sites);                
+                Vcells.ForEach(cell => cell.m_Vertices.Reverse());
+                settings.m_Changed = false;
+            }
+            if (Vcells.Count != sites.Count)
+                throw new Exception("Vcells count doesn't equall sites count\n");
+            for (int i = 0; i < sites.Count; i++)
+            {
+                DrawPoly(sites[i].m_Position, Vcells[i].m_Vertices.ToArray(), sites[i].m_Color);
+                //for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
+                //{
+                //    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], r, sites[i].m_Color);
+                //}
+            }
+        }
         public static void RenderVoronoiCPU()
         {
+            RenderVoronoiFast(settings.m_Seeds);
+            //RenderVoronoiPrallelApproach();
             //RenderVoronoiClassicalApproach();
-            RenderVoronoiPrallelApproach();
-            //RenderVoronoiBetterAlgorithim();
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
-                Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.Black);
-                continue;
+                Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
+                //continue;
                 Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
-                if (0 <= newpos.X && newpos.X <= CurrentWidth)
+                if (11 <= newpos.X && newpos.X <= CurrentWidth - 11)
                 {
                     CurrentSeed.m_Position.X = newpos.X;
                 }
@@ -481,7 +506,7 @@ namespace Voronoi
                 {
                     CurrentSeed.m_Velocity.X *= -1;
                 }
-                if (0 <= newpos.Y && newpos.Y <= CurrentWidth)
+                if (11 <= newpos.Y && newpos.Y <= CurrentHeight - 11)
                 {
                     CurrentSeed.m_Position.Y = newpos.Y;
                 }
@@ -572,6 +597,274 @@ namespace Voronoi
             int TextContinueWidth = Raylib.MeasureText(TextContinue, FontSize / 2);
             Raylib.DrawText(TextContinue, CurrentWidth / 2 - TextContinueWidth / 2, CurrentHeight - 20, FontSize / 2, Color.White);
         }
+        public unsafe static void DrawTexturePoly(Texture2D texture, Vector2 center, Vector2* texcoords, int pointCount, Color tint)
+        {
+            Rlgl.SetTexture(texture.Id);
+
+            Rlgl.Begin(DrawMode.Triangles);
+
+            Rlgl.Color4ub(tint.R, tint.G, tint.B, tint.A);
+
+            for (int i = 0; i < pointCount - 1; i++)
+            {
+                Rlgl.TexCoord2f(0.5f, 0.5f);
+                Rlgl.Vertex2f(center.X, center.Y);
+
+                Rlgl.TexCoord2f(texcoords[i].X, texcoords[i].Y);
+                Rlgl.Vertex2f(texcoords[i].X, texcoords[i].Y);
+
+                Rlgl.TexCoord2f(texcoords[i + 1].X, texcoords[i + 1].Y);
+                Rlgl.Vertex2f(texcoords[i + 1].X, texcoords[i + 1].Y);
+            }
+            Rlgl.End();
+
+            Rlgl.SetTexture(0);
+        }
+        public static bool loaded = false;
+        public static Image image = Raylib.GenImageColor(CurrentWidth, CurrentHeight, Color.White);
+        public static Texture2D texture = Raylib.LoadTextureFromImage(image);
+        public unsafe static void DrawPoly(Vector2 center, Vector2[] texcoords, Color c)
+        {
+            fixed (Vector2* texcoordsPTR = texcoords)
+            {
+                DrawTexturePoly(texture, center, texcoordsPTR, texcoords.Length, c);
+            }
+        }
+
+        public class Cell
+        {
+            public List<Vector2> m_Vertices;
+            public Vector2 m_Center;
+            public Cell()
+            {
+                m_Vertices = [];
+                m_Center = new();
+            }
+            public Cell(List<Vector2> vertices, Vector2 center)
+            {
+                m_Vertices = vertices;
+                m_Center = center;
+            }
+        }
+        public class Box : Cell
+        {
+            public Vector2 m_Min, m_Max;
+            public Rectangle m_Bounds;
+            public List<Cell> m_Cells;
+            public Box() : base()
+            {
+                m_Min = new(0, 0);
+                m_Max = new(0, 0);
+                m_Bounds = new();
+                m_Cells = [];
+            }
+            public Box(float Padding, List<Vector2> vertices, Vector2 center) : base(vertices, center)
+            {
+                if (vertices.Count != 4)
+                    throw new Exception("Invalid box\n");
+                m_Min = vertices[0] - new Vector2(Padding, Padding);
+                m_Max = vertices[2] + new Vector2(Padding, Padding);
+                m_Bounds = new(m_Min, new(m_Max.X - m_Min.X, m_Max.Y - m_Min.Y));
+                m_Cells = [];
+            }
+        }
+        public static (List<Vector2>?, int?, int?) CheckLineIntersectPoly(Vector2 StartPosisiton, Vector2 EndPosisiton, List<Vector2> Poly)
+        {
+            List<Vector2> ret = [];
+            List<int> retints = [];
+            for (int i = 0; i < Poly.Count; i++)
+            {
+                Vector2? v = CheckLineIntersection(StartPosisiton, EndPosisiton, Poly[i], Poly[(i + 1) % Poly.Count]);
+                if (v.HasValue)
+                {
+                    ret.Add(v.Value);
+                    retints.Add(i + 1);
+                }
+            }
+            return ((ret.Count > 0) ? ret : null, (retints.Count > 0) ? retints[0] : null, (retints.Count > 1) ? retints[1] : null);
+        }
+        public static Box box = new();
+        public static List<Vector2> texcoords = [];
+        public static List<Vector2> pts = [];
+        public static Vector2 center = new(0, 0);
+        public static List<Seed> seg = [];
+        public static List<bool> segb = [];
+        public static float r = 3.5f;
+        public static int Orientation(Vector2 p, Vector2 q, Vector2 r)
+        {
+            float val = (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y);
+            return (val <= 1e-6) ? 0 : ((val > 0) ? 1 : -1);
+        }
+        public static float Cross(Vector2 r, Vector2 s) => r.X * s.Y - r.Y * s.X;
+        public static Vector2? POI(Vector2 p, Vector2 ppr, Vector2 q, Vector2 qps)
+        {
+            Vector2 r = ppr - p;
+            Vector2 s = qps - q;
+            // Define the 2-dimensional vector cross product r × s to be r(x) s(y) − r(y) s(x).
+            float RcrossS = Cross(r, s);
+            if (RcrossS != 0)
+            {
+                float t = Cross(q - p, s) / RcrossS;
+                float u = Cross(q - p, r) / RcrossS;
+                if (0 <= t && t <= 1 && 0 <= u && u <= 1)
+                {
+                    //p + t r = q + u s
+                    float x = p.X + t * r.X;
+                    float y = p.Y + t * r.Y;
+                    return new(x, y);
+                }
+            }
+            // t = (q − p) × s / (r × s)
+            // u = (q − p) × r / (r × s)
+            // If r × s ≠ 0 and 0 ≤ t ≤ 1 and 0 ≤ u ≤ 1, the two line segments meet at the point p + t r = q + u s.
+            return null;
+        }
+        public static Vector2? CheckLineIntersection(Vector2 a, Vector2 b, Vector2 c, Vector2 d)
+        {
+            //Vector2 vec;
+            //bool col = false;
+            //unsafe
+            //{
+            //    col = Raylib.CheckCollisionLines(a, b, c, d, &vec);
+            //}
+            //return col ? vec : null;
+            float o1 = Orientation(a, b, c);
+            float o2 = Orientation(a, b, d);
+            float o3 = Orientation(c, d, a);
+            float o4 = Orientation(c, d, b);
+            if (o1 != o2 && o3 != o4)
+            {
+                Vector2? poi = POI(a, b, c, d);
+                if (poi.HasValue)
+                {
+                    return poi;
+                }
+            }
+            return null;
+        }
+        public struct Bisector(Vector2 a, Vector2 b)
+        {
+            public Vector2 m_a = a;
+            public Vector2 m_b = b;
+        }
+        public static float BisectorEquation(float x, float a, float b, float c) => (a * x + c) / -b;
+        public static Bisector GetBisector(Vector2 p1, Vector2 p2)
+        {
+            Vector2 v0 = new((p1.X + p2.X) / 2.0f, (p1.Y + p2.Y) / 2.0f);
+            float a = p2.X - p1.X;
+            float b = p2.Y - p1.Y;
+            Vector2 diff = new(a, b);
+            float c = -a * v0.X - b * v0.Y;
+            // ax + by + c = 0
+            // ax - c = -by
+            // y = (ax - c) / b
+            float angle = MathF.Atan(diff.Y / diff.X) + MathF.PI / 2.0f;
+            Vector2 b1 = new(v0.X + 2*CurrentWidth * MathF.Cos(angle) , v0.Y + 2*CurrentHeight * MathF.Sin(angle));
+            Vector2 b2 = new(v0.X - 2*CurrentWidth * MathF.Cos(angle) , v0.Y - 2*CurrentHeight * MathF.Sin(angle));
+            return new(b2, b1);
+        }
+        public static List<Cell> GetVoronoiCellFast(List<Seed> sites)
+        {
+            List<Cell> output = [];
+            for (int i = 0; i < sites.Count; i++)
+            {
+                Seed p = sites[i];
+                Cell cell = new([box.m_Min, box.m_Min + new Vector2(box.m_Bounds.Width, 0), box.m_Max, box.m_Min + new Vector2(0, box.m_Bounds.Height), box.m_Min], p.m_Position);
+                for (int j = 0; j < sites.Count; j++)
+                {
+                    if (i != j)
+                    {
+                        Seed q = sites[j];
+                        Bisector bisector = GetBisector(p.m_Position, q.m_Position);
+                        (List<Vector2>? intersects, int? xi, int? xj) = CheckLineIntersectPoly(bisector.m_a, bisector.m_b, cell.m_Vertices);
+                        //Raylib.DrawLineEx(bisector.m_a, bisector.m_b, 3, q.m_Color);
+                        if (intersects != null && intersects.Count == 2 && xi.HasValue && xj.HasValue)
+                        {
+                            List<Vector2> newCellVertices = [];
+                            newCellVertices.Add(intersects[0]);
+                            for (int k = xi.Value; ; k = (k + 1) % cell.m_Vertices.Count)
+                            {
+                                if (k == xj.Value)
+                                    break;
+                                newCellVertices.Add(cell.m_Vertices[k % cell.m_Vertices.Count]);
+                            }
+                            newCellVertices.Add(intersects[1]);
+                            newCellVertices.Add(intersects[0]);
+
+                            if (!Raylib.CheckCollisionPointPoly(cell.m_Center, newCellVertices.ToArray()))
+                            {
+                                newCellVertices.Clear();
+                                newCellVertices.Add(intersects[1]);
+                                for (int k = xj.Value;; k = (k + 1) % cell.m_Vertices.Count)
+                                {
+                                    if (k == xi.Value)
+                                        break;
+                                    newCellVertices.Add(cell.m_Vertices[k % cell.m_Vertices.Count]);
+                                }
+                                newCellVertices.Add(intersects[0]);
+                                newCellVertices.Add(intersects[1]);
+                            }
+                            cell.m_Vertices.Clear();
+                            cell.m_Vertices = newCellVertices;
+                        }
+                    }
+                }
+                output.Add(cell);
+            }
+            return output;
+        }
+        public static void ManagePoints()
+        {
+            if (Raylib.IsKeyPressed(KeyboardKey.R))
+            {
+                seg.Clear();
+            }
+            if (Raylib.IsMouseButtonPressed(MouseButton.Right))
+            {
+                seg.Add(new(Raylib.GetMousePosition(), GetRandomColor()));
+                segb.Add(false);
+            }
+            for (int i = 0; i < seg.Count; i++)
+            {
+                Raylib.DrawCircleV(seg[i].m_Position, r, Color.White);
+                Vector2 mp = Raylib.GetMousePosition();
+                if (Raylib.CheckCollisionPointCircle(mp, seg[i].m_Position, 5 * r))
+                {
+                    if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+                    {
+                        segb[i] = true;
+                    }
+                    else if (Raylib.IsMouseButtonReleased(MouseButton.Left))
+                    {
+                        segb[i] = false;
+                    }
+                    if (segb[i])
+                    {
+                        seg[i].m_Position = mp;
+                    }
+                }
+            }
+        }
+        public static void RenderSegments()
+        {
+            ManagePoints();
+            List<Seed> sites = seg;
+            float MinX = 0;
+            float MinY = 0;
+            float MaxX = CurrentWidth;
+            float MaxY = CurrentHeight;
+            float Padding = 5;
+            box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
+            List<Cell> Vcells = GetVoronoiCellFast(seg);
+            for (int i = 0; i < Vcells.Count; i++)
+            {
+                for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
+                {
+                    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], r, sites[i].m_Color);
+                }
+                Raylib.DrawCircleV(Vcells[i].m_Center, r, Color.White);
+            }
+        }
         static void Main()
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
@@ -589,6 +882,7 @@ namespace Voronoi
                 CurrentWidth = Raylib.GetScreenWidth();
                 CurrentHeight = Raylib.GetScreenHeight();
 
+                //RenderSegments();
                 if (state == State.WelcomeScreen && Raylib.IsKeyPressed(KeyboardKey.Enter))
                 {
                     state = State.Rendering;
