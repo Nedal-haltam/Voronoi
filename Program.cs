@@ -220,7 +220,7 @@ namespace Voronoi
             }
         }
 
-        public static int DefaultNumberOfSeeds = 70;
+        public static int DefaultNumberOfSeeds = 110;
         public static List<Vector2> texcoords = [];
         public static List<Vector2> pts = [];
         public static Vector2 center = new(0, 0);
@@ -520,7 +520,7 @@ namespace Voronoi
                 DrawPoly(sites[i].m_Position, [.. Vcells[i].m_Vertices], sites[i].m_Color);
                 //for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
                 //{
-                //    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], r, sites[i].m_Color);
+                //    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], 4, sites[i].m_Color);
                 //}
             }
         }
@@ -856,8 +856,8 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            Raylib.InitWindow(800, 600, "Voronoi");
-            //Raylib.InitWindow(16 * 30, 9 * 30, "Voronoi");
+            //Raylib.InitWindow(800, 600, "Voronoi");
+            Raylib.InitWindow(16 * 100, 9 * 100, "Voronoi");
             settings = new();
             State state = State.WelcomeScreen;
             CurrentWidth = Raylib.GetScreenWidth();
