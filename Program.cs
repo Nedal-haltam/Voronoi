@@ -532,9 +532,9 @@ namespace Voronoi
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
-                Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
+                //Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
                 Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
-                continue;
+                //continue;
                 if (11 <= newpos.X && newpos.X <= CurrentWidth - 11)
                 {
                     CurrentSeed.m_Position.X = newpos.X;
