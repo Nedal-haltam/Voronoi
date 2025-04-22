@@ -1,5 +1,4 @@
 ﻿using Raylib_cs;
-//using static Raylib_cs.Rlgl;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -347,7 +346,6 @@ namespace Voronoi
         public static void GenerateSeeds()
         {
             GenerateSeedsPatterns();
-            //GenerateSeedsRandom();
         }
         public static Color PointToColor(Vector2 p)
         {
@@ -501,6 +499,7 @@ namespace Voronoi
         public static List<Cell> Vcells = [];
         public static void RenderVoronoiFast(List<Seed> sites)
         {
+            // reference to the algorithm used in this approach: https://www.youtube.com/watch?v=I6Fen2Ac-1U
             if (settings.m_Changed)
             {
                 float MinX = 10;
@@ -518,10 +517,6 @@ namespace Voronoi
             for (int i = 0; i < sites.Count; i++)
             {
                 DrawPoly(sites[i].m_Position, [.. Vcells[i].m_Vertices], sites[i].m_Color);
-                //for (int j = 0; j < Vcells[i].m_Vertices.Count; j++)
-                //{
-                //    Raylib.DrawLineEx(Vcells[i].m_Vertices[j], Vcells[i].m_Vertices[(j + 1) % Vcells[i].m_Vertices.Count], 4, sites[i].m_Color);
-                //}
             }
         }
         public static void RenderVoronoiCPU()
@@ -534,7 +529,6 @@ namespace Voronoi
                 Seed CurrentSeed = settings.GetSeed(i);
                 Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
                 Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
-                //continue;
                 if (11 <= newpos.X && newpos.X <= CurrentWidth - 11)
                 {
                     CurrentSeed.m_Position.X = newpos.X;
@@ -692,7 +686,6 @@ namespace Voronoi
         {
             Vector2 r = ppr - p;
             Vector2 s = qps - q;
-            // Define the 2-dimensional vector cross product r × s to be r(x) s(y) − r(y) s(x).
             float RcrossS = Cross(r, s);
             if (RcrossS != 0)
             {
@@ -700,26 +693,15 @@ namespace Voronoi
                 float u = Cross(q - p, r) / RcrossS;
                 if (0 <= t && t <= 1 && 0 <= u && u <= 1)
                 {
-                    //p + t r = q + u s
                     float x = p.X + t * r.X;
                     float y = p.Y + t * r.Y;
                     return new(x, y);
                 }
             }
-            // t = (q − p) × s / (r × s)
-            // u = (q − p) × r / (r × s)
-            // If r × s ≠ 0 and 0 ≤ t ≤ 1 and 0 ≤ u ≤ 1, the two line segments meet at the point p + t r = q + u s.
             return null;
         }
         public static Vector2? CheckLineIntersection(Vector2 a, Vector2 b, Vector2 c, Vector2 d)
         {
-            //Vector2 vec;
-            //bool col = false;
-            //unsafe
-            //{
-            //    col = Raylib.CheckCollisionLines(a, b, c, d, &vec);
-            //}
-            //return col ? vec : null;
             float o1 = Orientation(a, b, c);
             float o2 = Orientation(a, b, d);
             float o3 = Orientation(c, d, a);
@@ -742,9 +724,6 @@ namespace Voronoi
             float b = p2.Y - p1.Y;
             Vector2 diff = new(a, b);
             float c = -a * v0.X - b * v0.Y;
-            // ax + by + c = 0
-            // ax - c = -by
-            // y = (ax - c) / b
             float angle = MathF.Atan(diff.Y / diff.X) + MathF.PI / 2.0f;
             Vector2 b1 = new(v0.X + 2*CurrentWidth * MathF.Cos(angle) , v0.Y + 2*CurrentHeight * MathF.Sin(angle));
             Vector2 b2 = new(v0.X - 2*CurrentWidth * MathF.Cos(angle) , v0.Y - 2*CurrentHeight * MathF.Sin(angle));
@@ -764,7 +743,6 @@ namespace Voronoi
                         Seed q = sites[j];
                         Bisector bisector = GetBisector(p.m_Position, q.m_Position);
                         (List<Vector2>? intersects, int? xi, int? xj) = CheckLineIntersectPoly(bisector.m_a, bisector.m_b, cell.m_Vertices);
-                        //Raylib.DrawLineEx(bisector.m_a, bisector.m_b, 3, q.m_Color);
                         if (intersects != null && intersects.Count == 2 && xi.HasValue && xj.HasValue)
                         {
                             List<Vector2> newCellVertices = [];
@@ -856,7 +834,6 @@ namespace Voronoi
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
             Raylib.SetTargetFPS(0);
-            //Raylib.InitWindow(800, 600, "Voronoi");
             Raylib.InitWindow(16 * 100, 9 * 100, "Voronoi");
             settings = new();
             State state = State.WelcomeScreen;
