@@ -561,14 +561,14 @@ namespace Voronoi
         public static void Render()
         {
             UpdateSettings();
-            if (Raylib.IsKeyPressed(KeyboardKey.C))
-            {
-                SwitchRenderTypeToCPU();
-            }
-            if (Raylib.IsKeyPressed(KeyboardKey.G))
-            {
-                SwitchRenderTypeToGPU();
-            }
+            //if (Raylib.IsKeyPressed(KeyboardKey.C))
+            //{
+            //    SwitchRenderTypeToCPU();
+            //}
+            //if (Raylib.IsKeyPressed(KeyboardKey.G))
+            //{
+            //    SwitchRenderTypeToGPU();
+            //}
 
             if (settings.RenderType == RenderType.GPU)
             {
@@ -836,9 +836,11 @@ namespace Voronoi
             Raylib.SetTargetFPS(0);
             Raylib.InitWindow(16 * 100, 9 * 100, "Voronoi");
             settings = new();
-            State state = State.WelcomeScreen;
+            State state = State.Rendering;
             CurrentWidth = Raylib.GetScreenWidth();
             CurrentHeight = Raylib.GetScreenHeight();
+            SwitchRenderTypeToCPU();
+
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
@@ -855,7 +857,8 @@ namespace Voronoi
                 {
                     state = State.WelcomeScreen;
                 }
-
+                // TODO: fix usage/welcome screen remove GPU, introduce CPU fast/slow, the slow is costomizable
+                // investigate in converting from eucledean to manhatten
                 if (state == State.WelcomeScreen)
                 {
                     DisplayWelcomeScreen();
