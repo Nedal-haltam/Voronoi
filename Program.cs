@@ -613,10 +613,6 @@ namespace Voronoi
                 "\t\tincrease or decrease the value using",
                 "\t\tthe right and left arrows respectively for the Mix distance mode",
                 "\tNOTE: You can add a seed by clicking the left mouse button",
-                "G: To switch to GPU mode",
-                "\tR: To get another set of random seeds",
-                "\t1: To switch to color view",
-                "\t2: To switch to Black/White view",
                 "H: return to Welcome Screen",
             ];
             for (int i = 0; i < TextParameters.Length; i++)
@@ -857,8 +853,6 @@ namespace Voronoi
                 {
                     state = State.WelcomeScreen;
                 }
-                // TODO: fix usage/welcome screen remove GPU, introduce CPU fast/slow, the slow is costomizable
-                // investigate in converting from eucledean to manhatten
                 if (state == State.WelcomeScreen)
                 {
                     DisplayWelcomeScreen();
