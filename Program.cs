@@ -20,6 +20,7 @@ namespace Voronoi
     internal class Program
     {
         public static readonly Random random = new();
+        public static float r = 3.0f;
         public static Settings settings;
         public static List<List<Pixel>> Grid = [];
         public static readonly List<Color> COLOR_PALETTE =
@@ -133,8 +134,14 @@ namespace Voronoi
                 m_Position = position;
                 m_Color = color;
                 float angle = 2 * MathF.PI * random.NextSingle();
-                float mag = 10 + (40) * random.NextSingle();
+                float mag = 15 + 50 * random.NextSingle();
                 m_Velocity = new(mag * MathF.Cos(angle), mag * MathF.Sin(angle));
+                // float vx = 50.0f + 50.0f * random.NextSingle();
+                // float vy = 50.0f + 50.0f * random.NextSingle();
+                // float r = random.NextSingle();
+                // vx = r > r / 2 ? -vx : vx;
+                // vy = r > r / 2 ? -vy : vy;
+                // m_Velocity = new(vx, vy);
             }
         }
         public struct Settings
@@ -312,8 +319,8 @@ namespace Voronoi
                 float angle = i * 2 * f * MathF.PI / DefaultNumberOfSeeds;
                 float x = CurrentWidth / 2 + mag * i * MathF.Cos(angle);
                 float y = CurrentHeight / 2 + mag * i * MathF.Sin(angle);
-                x = float.Clamp(x, 11, CurrentWidth - 11);
-                y = float.Clamp(y, 11, CurrentHeight - 11);
+                x = float.Clamp(x, r, CurrentWidth - r);
+                y = float.Clamp(y, r, CurrentHeight - r);
                 Vector2 p = new() { X = x, Y = y };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
@@ -324,8 +331,8 @@ namespace Voronoi
                 float angle = i * 2 * f * MathF.PI / DefaultNumberOfSeeds;
                 float x = CurrentWidth / 2 + mag * i * MathF.Cos(angle + MathF.PI);
                 float y = CurrentHeight / 2 + mag * i * MathF.Sin(angle + MathF.PI);
-                x = float.Clamp(x, 11, CurrentWidth - 11);
-                y = float.Clamp(y, 11, CurrentHeight - 11);
+                x = float.Clamp(x, r, CurrentWidth - r);
+                y = float.Clamp(y, r, CurrentHeight - r);
                 Vector2 p = new() { X = x, Y = y };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
@@ -337,7 +344,11 @@ namespace Voronoi
             settings.ClearSeeds();
             for (int i = 0; i < DefaultNumberOfSeeds; i++)
             {
-                Vector2 p = new() { X = random.Next(10, Raylib.GetScreenWidth() - 10), Y = random.Next(10, Raylib.GetScreenHeight() - 10) };
+                Vector2 p = new()
+                {
+                    X = random.Next((int)r, CurrentWidth - (int)r),
+                    Y = random.Next((int)r, CurrentHeight - (int)r)
+                };
                 Color c = GetRandomColor();
                 settings.AddSeed(new(p, c));
             }
@@ -502,12 +513,13 @@ namespace Voronoi
             // reference to the algorithm used in this approach: https://www.youtube.com/watch?v=I6Fen2Ac-1U
             if (settings.m_Changed)
             {
-                float MinX = 10;
-                float MinY = 10;
-                float MaxX = CurrentWidth - 10;
-                float MaxY = CurrentHeight - 10;
-                float Padding = 5;
-                Box box = new(Padding, [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
+                float MinX = r;
+                float MinY = r;
+                float MaxX = CurrentWidth - r;
+                float MaxY = CurrentHeight - r;
+                float Padding = r;
+                Box box = new(Padding,
+                [new(MinX, MinY), new(MaxX, MinY), new(MaxX, MaxY), new(MinX, MaxY)], new((MinX + MaxX) / 2.0f, (MinY + MaxY) / 2.0f));
                 Vcells = GetVoronoiCellFast(sites, box);                
                 Vcells.ForEach(cell => cell.m_Vertices.Reverse());
                 settings.m_Changed = false;
@@ -524,30 +536,27 @@ namespace Voronoi
             RenderVoronoiFast(settings.m_Seeds);
             //RenderVoronoiPrallelApproach();
             //RenderVoronoiClassicalApproach();
+            float dt = Raylib.GetFrameTime();
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
-                Raylib.DrawCircleV(CurrentSeed.m_Position, 2.5f, Color.White);
-                Vector2 newpos = CurrentSeed.m_Position + (Raylib.GetFrameTime() * CurrentSeed.m_Velocity);
-                if (11 <= newpos.X && newpos.X <= CurrentWidth - 11)
-                {
-                    CurrentSeed.m_Position.X = newpos.X;
-                }
-                else
+                // Raylib.DrawCircleV(CurrentSeed.m_Position, r, Color.White);
+
+                if (CurrentSeed.m_Position.X - r <= 0 || CurrentSeed.m_Position.X + r >= CurrentWidth)
                 {
                     CurrentSeed.m_Velocity.X *= -1;
+                    CurrentSeed.m_Position.X = Math.Clamp(CurrentSeed.m_Position.X, r, CurrentWidth - r);
                 }
-                if (11 <= newpos.Y && newpos.Y <= CurrentHeight - 11)
-                {
-                    CurrentSeed.m_Position.Y = newpos.Y;
-                }
-                else
+                if (CurrentSeed.m_Position.Y - r <= 0 || CurrentSeed.m_Position.Y + r >= CurrentHeight)
                 {
                     CurrentSeed.m_Velocity.Y *= -1;
+                    CurrentSeed.m_Position.Y = Math.Clamp(CurrentSeed.m_Position.Y, r, CurrentHeight - r);
                 }
+                CurrentSeed.m_Position.X += CurrentSeed.m_Velocity.X * dt;
+                CurrentSeed.m_Position.Y += CurrentSeed.m_Velocity.Y * dt;
                 settings.SetSeed(i, CurrentSeed);
-                settings.m_Changed = true;
             }
+            settings.m_Changed = true;
         }
         public static void SwitchRenderTypeToCPU()
         {
@@ -829,7 +838,7 @@ namespace Voronoi
         static void Main()
         {
             Raylib.SetConfigFlags(ConfigFlags.AlwaysRunWindow | ConfigFlags.ResizableWindow);
-            Raylib.SetTargetFPS(0);
+            Raylib.SetTargetFPS(60);
             Raylib.InitWindow(16 * 100, 9 * 100, "Voronoi");
             settings = new();
             State state = State.Rendering;
