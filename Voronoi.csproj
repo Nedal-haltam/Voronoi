@@ -11,21 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Raylib-cs">
-      <HintPath>bin\Debug\net8.0\raylib\lib\Raylib-cs.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="Fshader.fs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Raylib-cs.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="raylib.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Raylib-cs" Version="7.0.1" />
   </ItemGroup>
 
 </Project>
