@@ -370,13 +370,13 @@ namespace Voronoi
         }
         public static void UpdateSettings()
         {
-            if (settings.RenderType == RenderType.GPU)
-            {
-                if (Raylib.IsKeyPressed(KeyboardKey.R))
-                {
-                    settings.m_urandom = random.NextSingle();
-                }
-            }
+            // if (settings.RenderType == RenderType.GPU)
+            // {
+            //     if (Raylib.IsKeyPressed(KeyboardKey.R))
+            //     {
+            //         settings.m_urandom = random.NextSingle();
+            //     }
+            // }
             if (settings.RenderType == RenderType.CPU)
             {
                 if (Raylib.IsKeyPressed(KeyboardKey.R))
@@ -485,22 +485,22 @@ namespace Voronoi
             //    SwitchRenderTypeToGPU();
             //}
 
-            if (settings.RenderType == RenderType.GPU)
-            {
-                float[] ures = [CurrentWidth, CurrentHeight];
-                if (Raylib.IsKeyPressed(KeyboardKey.One))
-                    settings.m_uID = RenderView.Color;
-                if (Raylib.IsKeyPressed(KeyboardKey.Two))
-                    settings.m_uID = RenderView.BlackWhite;
+            // if (settings.RenderType == RenderType.GPU)
+            // {
+            //     float[] ures = [CurrentWidth, CurrentHeight];
+            //     if (Raylib.IsKeyPressed(KeyboardKey.One))
+            //         settings.m_uID = RenderView.Color;
+            //     if (Raylib.IsKeyPressed(KeyboardKey.Two))
+            //         settings.m_uID = RenderView.BlackWhite;
 
-                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "ures"), ures, ShaderUniformDataType.Vec2);
-                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "urandom"), settings.m_urandom, ShaderUniformDataType.Float);
-                Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "uID"), settings.m_uID, ShaderUniformDataType.Int);
+            //     Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "ures"), ures, ShaderUniformDataType.Vec2);
+            //     Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "urandom"), settings.m_urandom, ShaderUniformDataType.Float);
+            //     Raylib.SetShaderValue(settings.m_shader, Raylib.GetShaderLocation(settings.m_shader, "uID"), settings.m_uID, ShaderUniformDataType.Int);
 
-                Raylib.BeginShaderMode(settings.m_shader);
-                Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
-                Raylib.EndShaderMode();
-            }
+            //     Raylib.BeginShaderMode(settings.m_shader);
+            //     Raylib.DrawRectangle(0, 0, CurrentWidth, CurrentHeight, Color.White);
+            //     Raylib.EndShaderMode();
+            // }
             if (settings.RenderType == RenderType.CPU)
             {
                 RenderVoronoiCPU();
@@ -762,12 +762,13 @@ namespace Voronoi
                 if (state == State.WelcomeScreen && Raylib.IsKeyPressed(KeyboardKey.Enter))
                 {
                     state = State.Rendering;
-                    SwitchRenderTypeToGPU();
+                    // SwitchRenderTypeToGPU();
+                    SwitchRenderTypeToCPU();
                 }
-                if (state == State.Rendering && Raylib.IsKeyPressed(KeyboardKey.H))
-                {
-                    state = State.WelcomeScreen;
-                }
+                // if (state == State.Rendering && Raylib.IsKeyPressed(KeyboardKey.H))
+                // {
+                //     state = State.WelcomeScreen;
+                // }
                 if (state == State.WelcomeScreen)
                 {
                     DisplayWelcomeScreen();
