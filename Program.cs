@@ -20,7 +20,7 @@ namespace Voronoi
     internal class Program
     {
         public static readonly Random random = new();
-        public static float r = 3.0f;
+        public static float r = 2.0f;
         public static Settings settings;
         public static List<List<Pixel>> Grid = [];
         public static readonly List<Color> COLOR_PALETTE =
@@ -415,98 +415,6 @@ namespace Voronoi
             }
 
         }
-        public static void UpdateTexture()
-        {
-            Raylib.UnloadRenderTexture(settings.m_texture);
-            settings.m_texture = Raylib.LoadRenderTexture(CurrentWidth, CurrentHeight);
-            Raylib.BeginTextureMode(settings.m_texture);
-            Raylib.ClearBackground(Color.White);
-            for (int i = 0; i < Grid.Count; i++)
-            {
-                for (int j = 0; j < Grid[i].Count; j++)
-                {
-                    Color c = settings.GetSeed(Grid[i][j].m_index).m_Color;
-                    Raylib.DrawPixel(i, j, c);
-                }
-            }
-            Raylib.EndTextureMode();
-        }
-        public static void UpdateGridPrallelApproach()
-        {
-            Vector2 CurrentLocation;
-            for (int i = 0; i < CurrentWidth; i++)
-            {
-                List<Pixel> temp = [];
-                for (int j = 0; j < CurrentHeight; j++)
-                {
-                    CurrentLocation = new(i, j);
-                    temp.Add(new(CurrentLocation, Distance(CurrentLocation, settings.GetSeed(0).m_Position, settings.DistanceType), 0));
-                }
-                Grid.Add(temp);
-            }
-            for (int k = 0; k < settings.NumberOfSeeds; k++)
-            {
-                Parallel.For(0, CurrentWidth, i =>
-                {
-                    Parallel.For(0, CurrentHeight, j =>
-                    {
-                        Vector2 PixelPosition = Grid[i][j].m_Position;
-                        Vector2 PixelandCurrentSmallestDistance = PixelPosition - settings.GetSeed(Grid[i][j].m_index).m_Position;
-                        Vector2 PixelandCurrentIndexDistance = PixelPosition - settings.GetSeed(k).m_Position;
-                        bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
-                        if (IfSmaller)
-                        {
-                            Grid[i][j].m_DistanceToIndex = Distance(PixelPosition, settings.GetSeed(k).m_Position, settings.DistanceType);
-                            Grid[i][j].m_index = k;
-                        }
-                    });
-                });
-            }
-        }
-        public static void UpdateGridClassicalApproach()
-        {
-            for (int i = 0; i < CurrentWidth; i++)
-            {
-                List<Pixel> temp = [];
-                for (int j = 0; j < CurrentHeight; j++)
-                {
-                    int index = 0;
-                    Vector2 pixel = new(i, j);
-                    for (int k = 0; k < settings.NumberOfSeeds; k++)
-                    {
-                        Vector2 PixelandCurrentSmallestDistance = pixel - settings.GetSeed(index).m_Position;
-                        Vector2 PixelandCurrentIndexDistance = pixel - settings.GetSeed(k).m_Position;
-                        bool IfSmaller = IsSmallerDistance(PixelandCurrentIndexDistance, PixelandCurrentSmallestDistance, settings.DistanceType);
-                        if (IfSmaller)
-                            index = k;
-                    }
-                    temp.Add(new(pixel, Distance(pixel, settings.GetSeed(index).m_Position, settings.DistanceType), index));
-                }
-                Grid.Add(temp);
-            }
-        }
-        public static void RenderVoronoiClassicalApproach()
-        {
-            if (settings.m_Changed)
-            {
-                Grid.Clear();
-                UpdateGridClassicalApproach();
-                UpdateTexture();
-                settings.m_Changed = false;
-            }
-            Raylib.DrawTextureRec(settings.m_texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
-        }
-        public static void RenderVoronoiPrallelApproach()
-        {
-            if (settings.m_Changed)
-            {
-                Grid.Clear();
-                UpdateGridPrallelApproach();
-                UpdateTexture();
-                settings.m_Changed = false;
-            }
-            Raylib.DrawTextureRec(settings.m_texture.Texture, new() { X = 0, Y = 0, Width = CurrentWidth, Height = -CurrentHeight }, new() { X = 0, Y = 0 }, Color.White);
-        }
         public static List<Cell> Vcells = [];
         public static void RenderVoronoiFast(List<Seed> sites)
         {
@@ -534,13 +442,11 @@ namespace Voronoi
         public static void RenderVoronoiCPU()
         {
             RenderVoronoiFast(settings.m_Seeds);
-            //RenderVoronoiPrallelApproach();
-            //RenderVoronoiClassicalApproach();
             float dt = Raylib.GetFrameTime();
             for (int i = 0; i < settings.NumberOfSeeds; i++)
             {
                 Seed CurrentSeed = settings.GetSeed(i);
-                // Raylib.DrawCircleV(CurrentSeed.m_Position, r, Color.White);
+                Raylib.DrawCircleV(CurrentSeed.m_Position, r, Color.White);
 
                 if (CurrentSeed.m_Position.X - r <= 0 || CurrentSeed.m_Position.X + r >= CurrentWidth)
                 {
